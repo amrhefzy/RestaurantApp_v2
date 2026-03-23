@@ -16,6 +16,10 @@ public class GenericRepository<T>(RestaurantDbContext context)
         => await _dbSet.AsNoTracking()
                        .FirstOrDefaultAsync(e => e.Id == id);
 
+    /// <summary>Returns a tracked entity — use when you need to update scalar properties without calling Update().</summary>
+    public async Task<T?> GetByIdTrackedAsync(int id)
+        => await _dbSet.FirstOrDefaultAsync(e => e.Id == id);
+
     public async Task<IEnumerable<T>> GetAllAsync()
         => await _dbSet.AsNoTracking().ToListAsync();
 

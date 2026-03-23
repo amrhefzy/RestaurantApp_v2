@@ -11,14 +11,15 @@ public class UnitOfWork(RestaurantDbContext context) : IUnitOfWork
     private IDbContextTransaction? _transaction;
 
     // ── Lazy-initialized repositories ────────────────────────────────────────
-    private IOrderRepository?                  _orders;
-    private IMenuRepository?                   _menuItems;
-    private IGenericRepository<Category>?      _categories;
-    private ICashHandoverRepository?           _cashHandovers;
-    private IShiftRepository?                  _shifts;
-    private IGenericRepository<ShiftTemplate>? _shiftTemplates;
+    private IOrderRepository?                   _orders;
+    private IMenuRepository?                    _menuItems;
+    private IGenericRepository<Category>?       _categories;
+    private ICashHandoverRepository?            _cashHandovers;
+    private IShiftRepository?                   _shifts;
+    private IGenericRepository<ShiftTemplate>?  _shiftTemplates;
     private IGenericRepository<PrinterProfile>? _printerProfiles;
-    private IGenericRepository<Payment>?       _payments;
+    private IGenericRepository<Payment>?        _payments;
+    private IGenericRepository<PosOrderItem>?   _orderItems;
 
     public IOrderRepository Orders
         => _orders ??= new OrderRepository(_context);
@@ -43,6 +44,9 @@ public class UnitOfWork(RestaurantDbContext context) : IUnitOfWork
 
     public IGenericRepository<Payment> Payments
         => _payments ??= new GenericRepository<Payment>(_context);
+
+    public IGenericRepository<PosOrderItem> OrderItems
+        => _orderItems ??= new GenericRepository<PosOrderItem>(_context);
 
     // ── Persistence ──────────────────────────────────────────────────────────
     public async Task<int> CompleteAsync()
