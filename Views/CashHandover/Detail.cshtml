@@ -1,0 +1,183 @@
+@using Microsoft.AspNetCore.Localization
+@using RestaurantMS.Models.Domain
+@model RestaurantMS.Models.DTOs.CashHandoverSummaryDto
+@{
+    var culture = Context.Features.Get<IRequestCultureFeature>()
+                      ?.RequestCulture.Culture.Name ?? "ar";
+    var isAr    = culture.StartsWith("ar");
+
+    Layout                  = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"]       = isAr ? "تفاصيل الوردية" : "Handover Detail";
+    ViewData["ActiveMenu"]  = "CashHandover";
+    ViewData["Breadcrumbs"] = new List<(string Label, string? Url)>
+    {
+        (isAr ? "الرئيسية" : "Home",                 "/"),
+        (isAr ? "سجل الكاشير" : "Handover History",   "/CashHandover/History"),
+        (isAr ? "تفاصيل" : "Detail",                  null)
+    };
+
+    var diff    = Model.Difference ?? 0;
+    var diffCss = diff < 0 ? "text-danger" : diff > 0 ? "text-warning" : "text-success";
+    var statusCss = Model.Status switch {
+        HandoverStatus.Closed          => "badge-paid",
+        HandoverStatus.Flagged         => "badge-void",
+        HandoverStatus.PendingApproval => "badge-held",
+        _                              => "badge-open"
+    };
+}
+
+<div class="row g-4">
+
+    @* ── Summary card ──────────────────────────────────────────────────────── *@
+    <div class="col-lg-5">
+        <div class="card shadow-sm h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="fw-bold">
+                    <i class="fas fa-receipt me-2"></i>
+                    @(isAr ? "ملخص الوردية" : "Shift Summary")
+                </span>
+                <span class="badge @statusCss fs-6">@Model.Status</span>
+            </div>
+            <div class="card-body">
+                @{
+                    void Row(string label, string value, string? css = null) {
+                        <div class="d-flex justify-content-between py-2 border-bottom">
+                            <span class="text-muted">@label</span>
+                            <span class="fw-semibold @css">@value</span>
+                        </div>
+                    }
+                }
+
+                @{ Row(isAr ? "الكاشير" : "Cashier",            Model.CashierName); }
+                @{ Row(isAr ? "فُتح في" : "Opened At",          Model.OpenedAt.ToString("dd MMM yyyy HH:mm")); }
+                @{ Row(isAr ? "أُغلق في" : "Closed At",         Model.ClosedAt?.ToString("dd MMM yyyy HH:mm") ?? "—"); }
+                @{ Row(isAr ? "رصيد الفتح" : "Opening Float",   Model.OpenFloat.ToString("N3")); }
+                @{ Row(isAr ? "مبيعات نقدية" : "Cash Sales",    Model.CashSalesTotal.ToString("N3"), "text-success"); }
+                @{ Row(isAr ? "مبالغ مُستردة" : "Cash Refunds", Model.CashRefundsTotal.ToString("N3"), "text-danger"); }
+
+                <div class="d-flex justify-content-between py-2 border-bottom border-2">
+                    <span class="fw-bold">@(isAr ? "النقد المتوقع" : "Expected Cash")</span>
+                    <span class="fw-bold">@Model.ExpectedCash.ToString("N3")</span>
+                </div>
+                <div class="d-flex justify-content-between py-2 border-bottom border-2">
+                    <span class="fw-bold">@(isAr ? "النقد الفعلي" : "Actual Cash")</span>
+                    <span class="fw-bold">@(Model.ActualCash?.ToString("N3") ?? "—")</span>
+                </div>
+
+                <div class="d-flex justify-content-between py-3 rounded mt-2 px-2
+                            @(diff < 0 ? "bg-danger bg-opacity-10" : diff > 0 ? "bg-warning bg-opacity-10" : "bg-success bg-opacity-10")">
+                    <span class="fw-bold fs-5">@(isAr ? "الفرق" : "Difference")</span>
+                    <span class="fw-bold fs-5 @diffCss">
+                        @(Model.Difference.HasValue ? (diff >= 0 ? "+" : "") + diff.ToString("N3") : "—")
+                    </span>
+                </div>
+
+                <hr />
+                @{ Row(isAr ? "إجمالي الطلبات" : "Total Orders",   Model.TotalOrders.ToString()); }
+                @{ Row(isAr ? "مبيعات كارت" : "Card Sales",        Model.TotalCardSales.ToString("N3")); }
+            </div>
+            <div class="card-footer">
+                <a href="/CashHandover/History" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i>
+                    @(isAr ? "رجوع" : "Back to History")
+                </a>
+                @if (Model.Status == HandoverStatus.PendingApproval || Model.Status == HandoverStatus.Flagged)
+                {
+                    if (User.IsInRole("SuperAdmin") || User.IsInRole("Manager"))
+                    {
+                        <button class="btn btn-primary btn-sm ms-2" id="approveDetailBtn"
+                                data-id="@Model.Id">
+                            <i class="fas fa-check-circle me-1"></i>
+                            @(isAr ? "اعتماد" : "Approve")
+                        </button>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+
+    @* ── Status timeline ────────────────────────────────────────────────────── *@
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-header fw-bold">
+                <i class="fas fa-stream me-2"></i>
+                @(isAr ? "الحالة" : "Status Timeline")
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    @{
+                        void TimelineItem(string icon, string title, string? time, bool active) {
+                            <li class="d-flex gap-3 mb-3">
+                                <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0
+                                            @(active ? "bg-primary text-white" : "bg-light text-muted")"
+                                     style="width:40px;height:40px">
+                                    <i class="fas @icon"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-semibold @(active ? "" : "text-muted")">@title</div>
+                                    @if (time is not null) { <small class="text-muted">@time</small> }
+                                </div>
+                            </li>
+                        }
+                    }
+                    @{ TimelineItem("fa-play", isAr ? "فُتحت الوردية" : "Shift Opened",
+                           Model.OpenedAt.ToString("dd MMM HH:mm"), true); }
+                    @{ TimelineItem("fa-stop", isAr ? "أُغلقت الوردية" : "Shift Closed",
+                           Model.ClosedAt?.ToString("dd MMM HH:mm"),
+                           Model.Status != HandoverStatus.Open); }
+                    @{ TimelineItem("fa-check-double", isAr ? "اعتمدها المدير" : "Manager Approved",
+                           null,
+                           Model.Status == HandoverStatus.Closed); }
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Approve modal *@
+<div class="modal fade" id="detailApproveModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">@(isAr ? "اعتماد الوردية" : "Approve Handover")</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">@(isAr ? "ملاحظات" : "Notes")</label>
+                    <textarea id="detailApproveNotes" class="form-control" rows="2"></textarea>
+                </div>
+                <label class="form-label">@(isAr ? "PIN المدير" : "Manager PIN")</label>
+                <input type="password" id="detailApprovePinInput" class="form-control text-center fs-4 fw-bold"
+                       maxlength="4" placeholder="••••" style="letter-spacing:8px" />
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">@(isAr ? "إلغاء" : "Cancel")</button>
+                <button class="btn btn-primary" id="confirmDetailApproveBtn">
+                    <i class="fas fa-check me-1"></i>@(isAr ? "اعتماد" : "Approve")
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/modules/cashhandover.js" asp-append-version="true"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const approveBtn = document.getElementById('approveDetailBtn');
+            if (approveBtn) {
+                approveBtn.addEventListener('click', () => {
+                    new bootstrap.Modal(document.getElementById('detailApproveModal')).show();
+                });
+                document.getElementById('confirmDetailApproveBtn').addEventListener('click', () => {
+                    HandoverModule.approveHandover(
+                        parseInt(approveBtn.dataset.id),
+                        document.getElementById('detailApprovePinInput').value,
+                        document.getElementById('detailApproveNotes').value
+                    );
+                });
+            }
+        });
+    </script>
+}

@@ -1,0 +1,136 @@
+@using Microsoft.AspNetCore.Localization
+@{
+    var culture = Context.Features.Get<IRequestCultureFeature>()
+                      ?.RequestCulture.Culture.Name ?? "ar";
+    var isAr    = culture.StartsWith("ar");
+
+    Layout                  = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"]       = isAr ? "سجل الكاشير" : "Handover History";
+    ViewData["ActiveMenu"]  = "CashHandover";
+    ViewData["Breadcrumbs"] = new List<(string Label, string? Url)>
+    {
+        (isAr ? "الرئيسية" : "Home",           "/"),
+        (isAr ? "سجل الكاشير" : "Handover History", null)
+    };
+
+    string fromVal = ViewBag.From ?? DateTime.UtcNow.AddDays(-30).ToString("yyyy-MM-dd");
+    string toVal   = ViewBag.To   ?? DateTime.UtcNow.ToString("yyyy-MM-dd");
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+}
+
+<div class="card shadow-sm">
+    <div class="card-header d-flex flex-wrap gap-2 align-items-center">
+        <span class="fw-bold me-auto">
+            <i class="fas fa-history me-2"></i>
+            @(isAr ? "سجل ورديات الكاشير" : "Handover History")
+        </span>
+
+        @* Date range filter *@
+        <div class="d-flex gap-2 align-items-center">
+            <input type="text" id="filterFrom" class="form-control form-control-sm"
+                   style="width:130px" value="@fromVal" placeholder="@(isAr ? "من" : "From")" />
+            <span>→</span>
+            <input type="text" id="filterTo" class="form-control form-control-sm"
+                   style="width:130px" value="@toVal" placeholder="@(isAr ? "إلى" : "To")" />
+            <button class="btn btn-primary btn-sm" id="applyFilter">
+                <i class="fas fa-filter"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table id="handoverTable" class="table table-hover mb-0"
+                   style="width:100%">
+                <thead class="table-light">
+                    <tr>
+                        <th>@(isAr ? "التاريخ" : "Date")</th>
+                        <th>@(isAr ? "الكاشير" : "Cashier")</th>
+                        <th>@(isAr ? "رصيد الفتح" : "Open Float")</th>
+                        <th>@(isAr ? "المتوقع" : "Expected")</th>
+                        <th>@(isAr ? "الفعلي" : "Actual")</th>
+                        <th>@(isAr ? "الفرق" : "Difference")</th>
+                        <th>@(isAr ? "الحالة" : "Status")</th>
+                        <th>@(isAr ? "الإجراءات" : "Actions")</th>
+                    </tr>
+                </thead>
+                <tbody id="handoverTbody">
+                    <tr>
+                        <td colspan="8" class="text-center py-4 text-muted">
+                            <i class="fas fa-spinner fa-spin me-2"></i>
+                            @(isAr ? "جاري التحميل..." : "Loading...")
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@* ── Approve Modal ──────────────────────────────────────────────────────────── *@
+<div class="modal fade" id="approveModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-shield-alt me-2"></i>
+                    @(isAr ? "اعتماد الوردية" : "Approve Handover")
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="approveHandoverId" />
+                <div class="mb-3">
+                    <label class="form-label">@(isAr ? "ملاحظات المدير" : "Manager Notes")</label>
+                    <textarea id="approveNotes" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">@(isAr ? "PIN المدير" : "Manager PIN")</label>
+                    <input type="password" id="approvePinInput" class="form-control text-center fs-4 fw-bold"
+                           maxlength="4" placeholder="••••" style="letter-spacing:8px" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">@(isAr ? "إلغاء" : "Cancel")</button>
+                <button class="btn btn-primary" id="confirmApproveBtn">
+                    <i class="fas fa-check me-1"></i>@(isAr ? "اعتماد" : "Approve")
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="~/js/modules/cashhandover.js" asp-append-version="true"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            flatpickr('#filterFrom', { dateFormat: 'Y-m-d' });
+            flatpickr('#filterTo',   { dateFormat: 'Y-m-d' });
+
+            HandoverModule.initHistory(
+                document.getElementById('filterFrom').value,
+                document.getElementById('filterTo').value,
+                @(isAr ? "true" : "false")
+            );
+
+            document.getElementById('applyFilter').addEventListener('click', () => {
+                HandoverModule.loadHistory(
+                    document.getElementById('filterFrom').value,
+                    document.getElementById('filterTo').value
+                );
+            });
+
+            document.getElementById('confirmApproveBtn').addEventListener('click', () => {
+                HandoverModule.approveHandover(
+                    parseInt(document.getElementById('approveHandoverId').value),
+                    document.getElementById('approvePinInput').value,
+                    document.getElementById('approveNotes').value
+                );
+            });
+        });
+    </script>
+}

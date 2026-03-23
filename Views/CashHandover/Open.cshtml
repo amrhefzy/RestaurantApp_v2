@@ -1,0 +1,198 @@
+@using Microsoft.AspNetCore.Localization
+@using RestaurantMS.Models.DTOs
+@{
+    var culture = Context.Features.Get<IRequestCultureFeature>()
+                      ?.RequestCulture.Culture.Name ?? "ar";
+    var isAr    = culture.StartsWith("ar");
+
+    Layout                  = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"]       = isAr ? "فتح كاشير" : "Open Handover";
+    ViewData["ActiveMenu"]  = "CashHandover";
+    ViewData["Breadcrumbs"] = new List<(string Label, string? Url)>
+    {
+        (isAr ? "الرئيسية" : "Home",      "/"),
+        (isAr ? "فتح كاشير" : "Open Handover", null)
+    };
+
+    var recent = ViewBag.RecentHandovers as List<CashHandoverDto> ?? new();
+}
+
+@section Styles {
+    <style>
+        .float-card   { max-width: 480px; margin: 0 auto; }
+        .float-input  {
+            font-size: 2.4rem; font-weight: 700; text-align: center;
+            border: 2px solid #dee2e6; border-radius: .5rem;
+            padding: 14px; background: #fff; letter-spacing: 2px;
+            color: var(--primary-color); width: 100%;
+        }
+        .float-input:focus { outline: none; border-color: var(--secondary-color); }
+        .quick-float-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin: 12px 0; }
+        .quick-float-btn  {
+            height: 50px; font-size: 15px; font-weight: 600;
+            border-radius: .5rem; border: 1.5px solid var(--secondary-color);
+            background: #fff; color: var(--secondary-color); cursor: pointer;
+            transition: all .15s;
+        }
+        .quick-float-btn:hover { background: var(--secondary-color); color: #fff; }
+    </style>
+}
+
+@if (TempData["Warning"] is string warn)
+{
+    <div class="alert alert-warning alert-dismissible fade show">
+        <i class="fas fa-exclamation-triangle me-2"></i>@warn
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-5 col-md-7">
+
+        @* ── Open Float Card ─────────────────────────────────────────────── *@
+        <div class="card shadow-sm mb-4 float-card">
+            <div class="card-header bg-success text-white">
+                <i class="fas fa-cash-register me-2"></i>
+                @(isAr ? "فتح وردية الكاشير" : "Open Cashier Shift")
+            </div>
+            <div class="card-body">
+
+                @* Cashier info *@
+                <div class="d-flex align-items-center gap-3 mb-4">
+                    <div class="rounded-circle bg-primary text-white d-flex align-items-center
+                                justify-content-center" style="width:52px;height:52px;font-size:1.3rem">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold">@User.Identity?.Name</div>
+                        <small class="text-muted" id="currentDateTime">—</small>
+                    </div>
+                </div>
+
+                @* Float input *@
+                <label class="form-label fw-semibold">
+                    @(isAr ? "رصيد الفتح (النقد في الدرج)" : "Opening Float (Cash in Drawer)")
+                </label>
+                <input type="number" id="floatInput" class="float-input mb-3"
+                       value="0" min="0" step="0.001" />
+
+                @* Quick-add buttons *@
+                <div class="quick-float-grid">
+                    @foreach (var amt in new[] { 50, 100, 200, 500 })
+                    {
+                        <button class="quick-float-btn" data-add="@amt">+@amt</button>
+                    }
+                </div>
+                <div class="d-grid gap-2 mt-1">
+                    <button class="btn btn-outline-secondary btn-sm" id="resetFloatBtn">
+                        <i class="fas fa-undo me-1"></i>@(isAr ? "صفر" : "Reset to 0")
+                    </button>
+                </div>
+
+                @* Submit *@
+                <div class="d-grid mt-4">
+                    <button class="btn btn-success" style="height:56px;font-size:1.1rem;font-weight:700"
+                            id="openHandoverBtn">
+                        <i class="fas fa-play-circle me-2"></i>
+                        @(isAr ? "فتح الوردية" : "Open Shift")
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    @* ── Recent Handovers ─────────────────────────────────────────────────── *@
+    <div class="col-lg-7 col-md-9">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <i class="fas fa-history me-2"></i>
+                @(isAr ? "آخر الورديات (7 أيام)" : "Recent Handovers (7 days)")
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>@(isAr ? "التاريخ" : "Date")</th>
+                                <th>@(isAr ? "فتح" : "Open Float")</th>
+                                <th>@(isAr ? "المتوقع" : "Expected")</th>
+                                <th>@(isAr ? "الفعلي" : "Actual")</th>
+                                <th>@(isAr ? "الفرق" : "Difference")</th>
+                                <th>@(isAr ? "الحالة" : "Status")</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!recent.Any())
+                            {
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-3">
+                                        @(isAr ? "لا توجد بيانات" : "No records found")
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var h in recent.OrderByDescending(x => x.OpenedAt).Take(10))
+                                {
+                                    var diff     = h.Difference ?? 0;
+                                    var diffCss  = diff < 0 ? "text-danger" : diff > 0 ? "text-warning" : "text-success";
+                                    var statusCss = h.Status switch {
+                                        RestaurantMS.Models.Domain.HandoverStatus.Closed          => "badge-paid",
+                                        RestaurantMS.Models.Domain.HandoverStatus.Flagged         => "badge-void",
+                                        RestaurantMS.Models.Domain.HandoverStatus.PendingApproval => "badge-held",
+                                        _ => "badge-open"
+                                    };
+                                    <tr>
+                                        <td>@h.OpenedAt.ToString("dd MMM HH:mm")</td>
+                                        <td>@h.OpenFloat.ToString("N3")</td>
+                                        <td>@h.ExpectedCash.ToString("N3")</td>
+                                        <td>@(h.ActualCash?.ToString("N3") ?? "—")</td>
+                                        <td class="@diffCss fw-bold">
+                                            @(h.Difference.HasValue ? (diff >= 0 ? "+" : "") + diff.ToString("N3") : "—")
+                                        </td>
+                                        <td><span class="badge @statusCss">@h.Status</span></td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/modules/cashhandover.js" asp-append-version="true"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Live clock
+            function tick() {
+                document.getElementById('currentDateTime').textContent =
+                    new Date().toLocaleString('@(isAr ? "ar-SA" : "en-US")');
+            }
+            tick();
+            setInterval(tick, 1000);
+
+            // Quick-add buttons
+            document.querySelectorAll('.quick-float-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const cur = parseFloat(document.getElementById('floatInput').value) || 0;
+                    document.getElementById('floatInput').value =
+                        (cur + parseFloat(btn.dataset.add)).toFixed(3);
+                });
+            });
+
+            document.getElementById('resetFloatBtn').addEventListener('click', () => {
+                document.getElementById('floatInput').value = '0.000';
+            });
+
+            document.getElementById('openHandoverBtn').addEventListener('click', () => {
+                const amt = parseFloat(document.getElementById('floatInput').value) || 0;
+                if (amt < 0) { App.warning('@(isAr ? "الرصيد لا يمكن أن يكون سالباً" : "Float cannot be negative")'); return; }
+                HandoverModule.openHandover(amt);
+            });
+        });
+    </script>
+}

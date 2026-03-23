@@ -1,0 +1,187 @@
+@using Microsoft.AspNetCore.Localization
+@using RestaurantMS.Models.Domain
+@using RestaurantMS.Models.DTOs
+@{
+    var culture = Context.Features.Get<IRequestCultureFeature>()
+                      ?.RequestCulture.Culture.Name ?? "ar";
+    var isAr    = culture.StartsWith("ar");
+
+    Layout                  = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"]       = isAr ? "إغلاق الكاشير" : "Close Handover";
+    ViewData["ActiveMenu"]  = "CashHandover";
+    ViewData["Breadcrumbs"] = new List<(string Label, string? Url)>
+    {
+        (isAr ? "الرئيسية" : "Home",           "/"),
+        (isAr ? "إغلاق الكاشير" : "Close Handover", null)
+    };
+
+    var h = ViewBag.Handover as CashHandoverDto;
+    var threshold = 5.0m; // matches appsettings HandoverDifferenceThreshold
+}
+
+@section Styles {
+    <style>
+        .close-card   { max-width: 520px; margin: 0 auto; }
+        .actual-input {
+            font-size: 2.2rem; font-weight: 700; text-align: center;
+            border: 2px solid #dee2e6; border-radius: .5rem;
+            padding: 14px; background: #fff; letter-spacing: 2px;
+            color: var(--primary-color); width: 100%;
+        }
+        .actual-input:focus { outline: none; border-color: var(--secondary-color); }
+        .diff-panel {
+            border-radius: .5rem; padding: 14px 18px; font-size: 1.2rem;
+            font-weight: 700; text-align: center; transition: background .3s;
+        }
+        .diff-ok   { background: #d1fae5; color: #065f46; }
+        .diff-warn { background: #fef3c7; color: #92400e; }
+        .diff-bad  { background: #fee2e2; color: #991b1b; }
+        .breakdown-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: .9rem; }
+        .breakdown-row.total { border-top: 2px solid #dee2e6; font-weight: 700; font-size: 1rem; padding-top: 8px; margin-top: 4px; }
+    </style>
+}
+
+@if (TempData["Warning"] is string warn)
+{
+    <div class="alert alert-warning alert-dismissible fade show">
+        <i class="fas fa-exclamation-triangle me-2"></i>@warn
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (h is null)
+{
+    <div class="alert alert-danger">@(isAr ? "لم يتم العثور على وردية مفتوحة." : "No open handover found.")</div>
+}
+else
+{
+    <input type="hidden" id="handoverId"    value="@h.Id" />
+    <input type="hidden" id="expectedCash"  value="@h.ExpectedCash" />
+    <input type="hidden" id="diffThreshold" value="@threshold" />
+
+    <div class="row justify-content-center g-4">
+
+        @* ── Breakdown ──────────────────────────────────────────────────── *@
+        <div class="col-lg-5 col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <i class="fas fa-calculator me-2"></i>
+                    @(isAr ? "تفاصيل الوردية" : "Shift Breakdown")
+                </div>
+                <div class="card-body">
+                    <div class="breakdown-row">
+                        <span>@(isAr ? "رصيد الفتح" : "Opening Float")</span>
+                        <span>@h.OpenFloat.ToString("N3")</span>
+                    </div>
+                    <div class="breakdown-row">
+                        <span>@(isAr ? "مبيعات نقدية" : "Cash Sales")</span>
+                        <span class="text-success">+@h.CashSalesTotal.ToString("N3")</span>
+                    </div>
+                    <div class="breakdown-row">
+                        <span>@(isAr ? "مبالغ مُستردة" : "Cash Refunds")</span>
+                        <span class="text-danger">−@h.CashRefundsTotal.ToString("N3")</span>
+                    </div>
+                    <div class="breakdown-row total">
+                        <span>@(isAr ? "النقد المتوقع" : "Expected Cash")</span>
+                        <span id="expectedDisplay">@h.ExpectedCash.ToString("N3")</span>
+                    </div>
+                    <hr />
+                    <div class="breakdown-row">
+                        <span class="text-muted">@(isAr ? "الكاشير" : "Cashier")</span>
+                        <span>@h.CashierName</span>
+                    </div>
+                    <div class="breakdown-row">
+                        <span class="text-muted">@(isAr ? "فُتح في" : "Opened")</span>
+                        <span>@h.OpenedAt.ToString("dd MMM yyyy HH:mm")</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* ── Close Form ──────────────────────────────────────────────────── *@
+        <div class="col-lg-5 col-md-6 close-card">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning">
+                    <i class="fas fa-cash-register me-2"></i>
+                    @(isAr ? "إغلاق الوردية" : "Close Shift")
+                </div>
+                <div class="card-body">
+
+                    <label class="form-label fw-semibold">
+                        @(isAr ? "أدخل النقد الفعلي في الدرج" : "Enter Actual Cash in Drawer")
+                    </label>
+                    <input type="number" id="actualCashInput" class="actual-input mb-3"
+                           value="0" min="0" step="0.001" />
+
+                    @* Live difference display *@
+                    <div class="diff-panel diff-ok mb-3" id="diffPanel">
+                        @(isAr ? "الفرق: " : "Difference: ")
+                        <span id="diffValue">0.000</span>
+                    </div>
+
+                    @* Cashier notes *@
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            @(isAr ? "ملاحظات" : "Notes")
+                        </label>
+                        <textarea id="cashierNotes" class="form-control" rows="3"
+                                  placeholder="@(isAr ? "أي ملاحظات اختيارية..." : "Any optional notes...")"></textarea>
+                    </div>
+
+                    <div class="d-grid">
+                        <button class="btn btn-warning" id="closeHandoverBtn"
+                                style="height:52px;font-size:1rem;font-weight:700">
+                            <i class="fas fa-stop-circle me-2"></i>
+                            @(isAr ? "إغلاق الوردية" : "Close Shift")
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ── Manager PIN modal (auto-shown when flagged) ───────────────────── *@
+    <div class="modal fade" id="managerPinModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        @(isAr ? "تنبيه: فرق كبير" : "Warning: Large Difference")
+                    </h5>
+                </div>
+                <div class="modal-body text-center">
+                    <p class="text-danger fw-bold mb-3" id="flaggedDiffMsg">—</p>
+                    <p class="text-muted small">
+                        @(isAr ? "أدخل PIN المدير للمتابعة" : "Enter Manager PIN to proceed")
+                    </p>
+                    <input type="password" id="managerPinInput" class="form-control text-center fs-4
+                           fw-bold letter-spacing-3" maxlength="4"
+                           placeholder="••••" style="letter-spacing:8px" />
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <button class="btn btn-secondary" id="skipApprovalBtn">
+                        @(isAr ? "تجاهل الآن" : "Skip for Now")
+                    </button>
+                    <button class="btn btn-danger" id="submitWithPinBtn">
+                        <i class="fas fa-check me-1"></i>
+                        @(isAr ? "تأكيد" : "Confirm")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/js/modules/cashhandover.js" asp-append-version="true"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            HandoverModule.initClose(
+                @(isAr ? "true" : "false"),
+                '@(isAr ? "فرق:" : "Difference:")',
+                '@(isAr ? "مطابق" : "Match")'
+            );
+        });
+    </script>
+}
