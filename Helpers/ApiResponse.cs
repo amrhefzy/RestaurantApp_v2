@@ -8,57 +8,57 @@ public class ApiResponse<T>
     public List<string> Errors { get; set; } = new();
     public int StatusCode { get; set; }
 
-    public static ApiResponse<T> Ok(T data, string message = "")
+    public static ApiResponse<T> Ok(T data, string message = "Success")
         => new()
         {
-            Success = true,
-            Message = message,
-            Data = data,
+            Success    = true,
+            Message    = message,
+            Data       = data,
             StatusCode = 200
         };
 
     public static ApiResponse<T> Fail(string message, int statusCode = 400)
         => new()
         {
-            Success = false,
-            Message = message,
+            Success    = false,
+            Message    = message,
             StatusCode = statusCode
         };
 
-    public static ApiResponse<T> ValidationFail(List<string> errors, string message = "Validation failed")
+    public static ApiResponse<T> ValidationFail(List<string> errors)
         => new()
         {
-            Success = false,
-            Message = message,
-            Errors = errors,
+            Success    = false,
+            Message    = "Validation failed",
+            Errors     = errors,
             StatusCode = 422
         };
 }
 
 public class ApiResponse : ApiResponse<object>
 {
-    public static ApiResponse Ok(string message = "")
+    public static ApiResponse Ok(string message = "Success")
         => new()
         {
-            Success = true,
-            Message = message,
+            Success    = true,
+            Message    = message,
             StatusCode = 200
         };
 
     public new static ApiResponse Fail(string message, int statusCode = 400)
         => new()
         {
-            Success = false,
-            Message = message,
+            Success    = false,
+            Message    = message,
             StatusCode = statusCode
         };
 
-    public new static ApiResponse ValidationFail(List<string> errors, string message = "Validation failed")
+    public new static ApiResponse ValidationFail(List<string> errors)
         => new()
         {
-            Success = false,
-            Message = message,
-            Errors = errors,
+            Success    = false,
+            Message    = "Validation failed",
+            Errors     = errors,
             StatusCode = 422
         };
 }
