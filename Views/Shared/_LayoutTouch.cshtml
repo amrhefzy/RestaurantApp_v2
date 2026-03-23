@@ -1,0 +1,84 @@
+@{
+    var culture = Context.Features.Get<Microsoft.AspNetCore.Localization.IRequestCultureFeature>()
+                      ?.RequestCulture.Culture.Name ?? "ar";
+    var isAr = culture.StartsWith("ar");
+    var dir  = isAr ? "rtl" : "ltr";
+}
+<!DOCTYPE html>
+<html lang="@culture" dir="@dir">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>@ViewData["Title"] — POS Touch</title>
+
+    @* Bootstrap 5 *@
+    @if (isAr)
+    {
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.rtl.min.css" />
+    }
+    else
+    {
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" />
+    }
+
+    @* FontAwesome *@
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+    @* Google Fonts *@
+    @if (isAr)
+    {
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet" />
+    }
+    else
+    {
+        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+    }
+
+    <link rel="stylesheet" href="~/css/theme.css" asp-append-version="true" />
+    @if (isAr)
+    {
+        <link rel="stylesheet" href="~/css/theme-rtl.css" asp-append-version="true" />
+    }
+
+    <style>
+        html, body { height: 100%; overflow: hidden; }
+        body.pos-touch-body {
+            font-family: @(isAr ? "var(--font-arabic)" : "var(--font-english)");
+            background: #1a1a2e;
+            color: #fff;
+            touch-action: manipulation;
+        }
+        * { -webkit-tap-highlight-color: transparent; }
+    </style>
+
+    @RenderSection("Styles", required: false)
+</head>
+<body class="pos-touch-body">
+
+    @RenderBody()
+
+    @* jQuery *@
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    @* Bootstrap 5 *@
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+    @* SweetAlert2 *@
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.5/sweetalert2.min.js"></script>
+    @* Toastr *@
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+    @* Localization strings *@
+    @if (isAr)
+    {
+        <script src="~/js/localization/ar.js" asp-append-version="true"></script>
+    }
+    else
+    {
+        <script src="~/js/localization/en.js" asp-append-version="true"></script>
+    }
+
+    <script src="~/js/shared/notifications.js" asp-append-version="true"></script>
+
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

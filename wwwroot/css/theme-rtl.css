@@ -1,0 +1,236 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   RestaurantMS — Arabic RTL Overrides
+   Applied when dir="rtl" (Arabic culture)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Typography ──────────────────────────────────────────────────────────── */
+[dir="rtl"] body,
+[dir="rtl"] .sidebar-menu,
+[dir="rtl"] .form-control,
+[dir="rtl"] .btn,
+[dir="rtl"] .card,
+[dir="rtl"] .modal,
+[dir="rtl"] .dropdown-menu {
+    font-family: var(--font-arabic) !important;
+    letter-spacing: 0;
+}
+
+/* ── Text Alignment ──────────────────────────────────────────────────────── */
+[dir="rtl"] .text-left  { text-align: right !important; }
+[dir="rtl"] .text-right { text-align: left  !important; }
+[dir="rtl"] .float-end  { float: left  !important; }
+[dir="rtl"] .float-start { float: right !important; }
+[dir="rtl"] .me-auto   { margin-left: auto  !important; margin-right: 0    !important; }
+[dir="rtl"] .ms-auto   { margin-right: auto !important; margin-left: 0     !important; }
+[dir="rtl"] .ms-1, [dir="rtl"] .ms-2, [dir="rtl"] .ms-3 { margin-right: inherit; margin-left: 0; }
+[dir="rtl"] .me-1, [dir="rtl"] .me-2, [dir="rtl"] .me-3 { margin-left: inherit; margin-right: 0; }
+[dir="rtl"] .ps-1, [dir="rtl"] .ps-2, [dir="rtl"] .ps-3 { padding-right: inherit; padding-left: 0; }
+[dir="rtl"] .pe-1, [dir="rtl"] .pe-2, [dir="rtl"] .pe-3 { padding-left: inherit; padding-right: 0; }
+
+/* ── AdminLTE Sidebar (RTL) ──────────────────────────────────────────────── */
+[dir="rtl"] .main-sidebar {
+    right: 0;
+    left: auto;
+}
+
+[dir="rtl"] .wrapper.sidebar-mini:not(.sidebar-mini-md):not(.sidebar-mini-xs).sidebar-collapse
+    .main-sidebar:not(:hover) .nav-sidebar .nav-link {
+    width: calc(var(--lte-sidebar-width) + var(--lte-sidebar-mini-icon-width));
+}
+
+[dir="rtl"] .content-wrapper,
+[dir="rtl"] .main-header,
+[dir="rtl"] .main-footer {
+    margin-right: var(--lte-sidebar-width);
+    margin-left: 0;
+}
+
+[dir="rtl"] .sidebar-collapse .content-wrapper,
+[dir="rtl"] .sidebar-collapse .main-header,
+[dir="rtl"] .sidebar-collapse .main-footer {
+    margin-right: var(--lte-sidebar-mini-icon-width);
+    margin-left: 0;
+}
+
+[dir="rtl"] .brand-link {
+    direction: rtl;
+}
+
+[dir="rtl"] .nav-sidebar .nav-link > .nav-icon {
+    margin-left: 0.35rem;
+    margin-right: 0;
+}
+
+/* ── Navbar (RTL) ────────────────────────────────────────────────────────── */
+[dir="rtl"] .navbar-nav {
+    flex-direction: row;
+}
+
+[dir="rtl"] .main-header .navbar-nav {
+    flex-direction: row !important;
+}
+
+[dir="rtl"] .navbar-nav .dropdown-menu {
+    right: 0;
+    left: auto;
+}
+
+/* ── Cards & Modals ──────────────────────────────────────────────────────── */
+[dir="rtl"] .card-tools {
+    float: left;
+}
+
+[dir="rtl"] .modal-header .btn-close {
+    margin-left: 0;
+    margin-right: auto;
+}
+
+/* ── Forms ───────────────────────────────────────────────────────────────── */
+[dir="rtl"] .form-control,
+[dir="rtl"] .form-select {
+    text-align: right;
+}
+
+[dir="rtl"] .input-group > .form-control:not(:first-child),
+[dir="rtl"] .input-group > .form-select:not(:first-child) {
+    border-radius: 0.375rem 0 0 0.375rem !important;
+}
+
+[dir="rtl"] .input-group > .form-control:not(:last-child),
+[dir="rtl"] .input-group > .form-select:not(:last-child) {
+    border-radius: 0 0.375rem 0.375rem 0 !important;
+}
+
+[dir="rtl"] .input-group-text:first-child {
+    border-radius: 0 0.375rem 0.375rem 0;
+}
+
+[dir="rtl"] .input-group-text:last-child {
+    border-radius: 0.375rem 0 0 0.375rem;
+}
+
+/* ── Directional Icon Flip (arrows) ─────────────────────────────────────── */
+[dir="rtl"] .fa-arrow-left,
+[dir="rtl"] .fa-chevron-left,
+[dir="rtl"] .fa-angle-left,
+[dir="rtl"] .fa-caret-left {
+    transform: scaleX(-1);
+}
+
+[dir="rtl"] .fa-arrow-right,
+[dir="rtl"] .fa-chevron-right,
+[dir="rtl"] .fa-angle-right,
+[dir="rtl"] .fa-caret-right {
+    transform: scaleX(-1);
+}
+
+/* ── Select2 RTL ─────────────────────────────────────────────────────────── */
+[dir="rtl"] .select2-container {
+    direction: rtl;
+    text-align: right;
+}
+
+[dir="rtl"] .select2-container--default .select2-selection--single .select2-selection__arrow {
+    left: 1px;
+    right: auto;
+}
+
+[dir="rtl"] .select2-results__option {
+    text-align: right;
+}
+
+[dir="rtl"] .select2-search--dropdown .select2-search__field {
+    direction: rtl;
+}
+
+/* ── DataTables RTL ──────────────────────────────────────────────────────── */
+[dir="rtl"] .dataTables_wrapper .dataTables_length {
+    float: right;
+}
+
+[dir="rtl"] .dataTables_wrapper .dataTables_filter {
+    float: left;
+    text-align: left;
+}
+
+[dir="rtl"] .dataTables_wrapper .dataTables_info {
+    float: right;
+}
+
+[dir="rtl"] .dataTables_wrapper .dataTables_paginate {
+    float: left;
+    text-align: left;
+}
+
+[dir="rtl"] table.dataTable thead th,
+[dir="rtl"] table.dataTable tbody td {
+    text-align: right;
+}
+
+/* ── Toastr RTL Position ─────────────────────────────────────────────────── */
+[dir="rtl"] #toast-container {
+    left: 12px;
+    right: auto;
+}
+
+[dir="rtl"] #toast-container.toast-top-right {
+    top: 12px;
+    right: auto;
+    left: 12px;
+}
+
+[dir="rtl"] #toast-container.toast-bottom-right {
+    bottom: 12px;
+    right: auto;
+    left: 12px;
+}
+
+/* ── Breadcrumb ──────────────────────────────────────────────────────────── */
+[dir="rtl"] .breadcrumb-item + .breadcrumb-item::before {
+    content: "\276E"; /* ❮ */
+    padding-right: 0;
+    padding-left: 0.5rem;
+    float: right;
+}
+
+[dir="rtl"] .breadcrumb {
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+}
+
+/* ── Dropdown Menus ──────────────────────────────────────────────────────── */
+[dir="rtl"] .dropdown-menu {
+    text-align: right;
+}
+
+[dir="rtl"] .dropdown-item .fa,
+[dir="rtl"] .dropdown-item .fas,
+[dir="rtl"] .dropdown-item .far {
+    margin-left: 0.4rem;
+    margin-right: 0;
+}
+
+/* ── Pagination ──────────────────────────────────────────────────────────── */
+[dir="rtl"] .pagination {
+    flex-direction: row-reverse;
+}
+
+/* ── Tables ──────────────────────────────────────────────────────────────── */
+[dir="rtl"] table {
+    direction: rtl;
+}
+
+[dir="rtl"] th,
+[dir="rtl"] td {
+    text-align: right;
+}
+
+/* ── Info Box ────────────────────────────────────────────────────────────── */
+[dir="rtl"] .info-box-icon {
+    border-radius: 0 var(--border-radius) var(--border-radius) 0;
+}
+
+[dir="rtl"] .info-box-content {
+    margin-right: 70px;
+    margin-left: 0;
+}

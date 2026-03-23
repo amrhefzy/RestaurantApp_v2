@@ -1,0 +1,499 @@
+@using Microsoft.AspNetCore.Localization
+@using Microsoft.Extensions.Configuration
+@inject IConfiguration Configuration
+
+@{
+    var cultureFeature  = Context.Features.Get<IRequestCultureFeature>();
+    var currentCulture  = cultureFeature?.RequestCulture.Culture.Name ?? "ar";
+    var isArabic        = currentCulture.StartsWith("ar");
+    var dir             = isArabic ? "rtl" : "ltr";
+    var lang            = isArabic ? "ar"  : "en";
+    var restaurantName  = Configuration["RestaurantSettings:Name"]   ?? "RestaurantMS";
+    var restaurantNameAr = Configuration["RestaurantSettings:NameAr"] ?? "نظام المطعم";
+    var appVersion      = Configuration["RestaurantSettings:Version"] ?? "1.0.0";
+    var pageTitle       = ViewData["Title"]?.ToString() ?? restaurantName;
+
+    // Breadcrumbs: ViewData["Breadcrumbs"] = List<(string Label, string? Url)>
+    var breadcrumbs = ViewData["Breadcrumbs"] as List<(string Label, string? Url)>
+                   ?? new List<(string Label, string? Url)>();
+}
+<!DOCTYPE html>
+<html lang="@lang" dir="@dir">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content="@Antiforgery.GetAndStoreTokens(Context).RequestToken" />
+    <title>@pageTitle — @(isArabic ? restaurantNameAr : restaurantName)</title>
+
+    @* ── Bootstrap 5 (RTL / LTR) ──────────────────────────────────────── *@
+    @if (isArabic)
+    {
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.rtl.min.css" />
+    }
+    else
+    {
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" />
+    }
+
+    @* ── AdminLTE 3 ───────────────────────────────────────────────────── *@
+    @if (isArabic)
+    {
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/css/adminlte.rtl.min.css" />
+    }
+    else
+    {
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/css/adminlte.min.css" />
+    }
+
+    @* ── FontAwesome 6 ────────────────────────────────────────────────── *@
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+    @* ── DataTables + Buttons ─────────────────────────────────────────── *@
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/datatables/1.13.8/css/dataTables.bootstrap5.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/datatables-buttons/2.4.2/css/buttons.bootstrap5.min.css" />
+
+    @* ── Select2 ─────────────────────────────────────────────────────── *@
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-rc.0/css/select2.min.css" />
+
+    @* ── Flatpickr ────────────────────────────────────────────────────── *@
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css" />
+
+    @* ── Toastr ──────────────────────────────────────────────────────── *@
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+    @* ── SweetAlert2 ─────────────────────────────────────────────────── *@
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.5/sweetalert2.min.css" />
+
+    @* ── Google Fonts ────────────────────────────────────────────────── *@
+    @if (isArabic)
+    {
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet" />
+    }
+    else
+    {
+        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+    }
+
+    @* ── Theme CSS ───────────────────────────────────────────────────── *@
+    <link rel="stylesheet" href="~/css/theme.css" asp-append-version="true" />
+    @if (isArabic)
+    {
+        <link rel="stylesheet" href="~/css/theme-rtl.css" asp-append-version="true" />
+    }
+
+    @RenderSection("Styles", required: false)
+</head>
+<body class="hold-transition sidebar-mini layout-fixed @(isArabic ? "layout-rtl" : "")">
+
+<div class="wrapper">
+
+    @* ═══════════════════════════════════════════════════════════════════
+       TOP NAVBAR
+       ═══════════════════════════════════════════════════════════════════ *@
+    <nav class="main-header navbar navbar-expand navbar-dark">
+
+        @* Sidebar toggle *@
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a class="nav-link" data-lte-toggle="sidebar" href="#" role="button">
+                    <i class="fas fa-bars"></i>
+                </a>
+            </li>
+            <li class="nav-item d-none d-sm-inline-block">
+                <a href="/" class="nav-link fw-semibold">
+                    @(isArabic ? restaurantNameAr : restaurantName)
+                </a>
+            </li>
+        </ul>
+
+        @* Right side nav *@
+        <ul class="navbar-nav @(isArabic ? "me-auto" : "ms-auto")">
+
+            @* ── Language Switcher ────────────────────────────────────── *@
+            <li class="nav-item lang-switcher me-2">
+                <form asp-controller="Language" asp-action="Set" method="post" class="d-inline">
+                    <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                    @Html.AntiForgeryToken()
+                    <button type="submit" name="culture" value="ar"
+                            class="btn btn-sm @(isArabic ? "btn-light" : "btn-outline-light") me-1"
+                            title="Arabic">
+                        🇸🇦 AR
+                    </button>
+                    <button type="submit" name="culture" value="en"
+                            class="btn btn-sm @(!isArabic ? "btn-light" : "btn-outline-light")"
+                            title="English">
+                        🇬🇧 EN
+                    </button>
+                </form>
+            </li>
+
+            @* ── Notification Bell ────────────────────────────────────── *@
+            <li class="nav-item dropdown">
+                <a class="nav-link" href="#" data-bs-toggle="dropdown">
+                    <i class="far fa-bell"></i>
+                    <span class="badge badge-warning navbar-badge" id="notif-count" style="display:none">0</span>
+                </a>
+                <div class="dropdown-menu dropdown-menu-lg @(isArabic ? "dropdown-menu-start" : "dropdown-menu-end")">
+                    <span class="dropdown-header" id="notif-header">
+                        @(isArabic ? "الإشعارات" : "Notifications")
+                    </span>
+                    <div class="dropdown-divider"></div>
+                    <div id="notif-list">
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-info-circle @(isArabic ? "ms-2" : "me-2") text-info"></i>
+                            @(isArabic ? "لا توجد إشعارات جديدة" : "No new notifications")
+                        </a>
+                    </div>
+                </div>
+            </li>
+
+            @* ── User Dropdown ────────────────────────────────────────── *@
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <li class="nav-item dropdown">
+                    <a class="nav-link" href="#" data-bs-toggle="dropdown">
+                        <i class="far fa-user-circle fa-lg"></i>
+                        <span class="d-none d-md-inline ms-1">@User.Identity.Name</span>
+                    </a>
+                    <ul class="dropdown-menu @(isArabic ? "dropdown-menu-start" : "dropdown-menu-end")">
+                        <li>
+                            <a class="dropdown-item" asp-controller="Account" asp-action="Profile">
+                                <i class="fas fa-id-card @(isArabic ? "ms-2" : "me-2")"></i>
+                                @(isArabic ? "الملف الشخصي" : "My Profile")
+                            </a>
+                        </li>
+                        <li><div class="dropdown-divider"></div></li>
+                        <li>
+                            <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="dropdown-item text-danger">
+                                    <i class="fas fa-sign-out-alt @(isArabic ? "ms-2" : "me-2")"></i>
+                                    @(isArabic ? "تسجيل الخروج" : "Logout")
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
+                </li>
+            }
+
+        </ul>
+    </nav>
+
+    @* ═══════════════════════════════════════════════════════════════════
+       SIDEBAR
+       ═══════════════════════════════════════════════════════════════════ *@
+    <aside class="main-sidebar sidebar-dark-primary elevation-4">
+
+        @* Brand *@
+        <a href="/" class="brand-link">
+            <span class="brand-image img elevation-3 d-flex align-items-center justify-content-center
+                          text-white fw-bold fs-4 rounded"
+                  style="width:33px;height:33px;background:var(--secondary-color);">R</span>
+            <span class="brand-text fw-semibold">
+                @(isArabic ? restaurantNameAr : restaurantName)
+            </span>
+        </a>
+
+        <div class="sidebar">
+
+            @* User info box *@
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+                    <div class="image">
+                        <i class="fas fa-user-circle fa-2x text-secondary"></i>
+                    </div>
+                    <div class="info">
+                        <a href="#" class="d-block fw-semibold">@User.Identity.Name</a>
+                        <small class="text-muted">
+                            @if (User.IsInRole("SuperAdmin"))    { <span>Super Admin</span> }
+                            else if (User.IsInRole("Manager"))   { <span>@(isArabic ? "مدير" : "Manager")</span> }
+                            else if (User.IsInRole("Cashier"))   { <span>@(isArabic ? "كاشير" : "Cashier")</span> }
+                            else if (User.IsInRole("Waiter"))    { <span>@(isArabic ? "نادل" : "Waiter")</span> }
+                            else if (User.IsInRole("KitchenStaff")) { <span>@(isArabic ? "مطبخ" : "Kitchen")</span> }
+                            else if (User.IsInRole("Accountant")){ <span>@(isArabic ? "محاسب" : "Accountant")</span> }
+                        </small>
+                    </div>
+                </div>
+            }
+
+            @* Navigation menu *@
+            <nav class="mt-2">
+                <ul class="nav nav-pills nav-sidebar flex-column" data-lte-toggle="treeview"
+                    role="menu" data-accordion="false">
+
+                    @* Dashboard — all roles *@
+                    <li class="nav-item">
+                        <a asp-controller="Home" asp-action="Index" class="nav-link
+                            @(ViewData["ActiveMenu"]?.ToString() == "Dashboard" ? "active" : "")">
+                            <i class="nav-icon fas fa-tachometer-alt"></i>
+                            <p>@(isArabic ? "الرئيسية" : "Dashboard")</p>
+                        </a>
+                    </li>
+
+                    @* POS Standard — Cashier, Manager, SuperAdmin *@
+                    @if (User.IsInRole("Cashier") || User.IsInRole("Manager") || User.IsInRole("SuperAdmin"))
+                    {
+                        <li class="nav-item">
+                            <a asp-controller="Pos" asp-action="Index" class="nav-link
+                                @(ViewData["ActiveMenu"]?.ToString() == "Pos" ? "active" : "")">
+                                <i class="nav-icon fas fa-cash-register"></i>
+                                <p>@(isArabic ? "نقطة البيع" : "POS Standard")</p>
+                            </a>
+                        </li>
+                    }
+
+                    @* POS Touch — Cashier, Manager *@
+                    @if (User.IsInRole("Cashier") || User.IsInRole("Manager") || User.IsInRole("SuperAdmin"))
+                    {
+                        <li class="nav-item">
+                            <a asp-controller="PosTouch" asp-action="Index"
+                               class="nav-link" target="_blank" rel="noopener">
+                                <i class="nav-icon fas fa-hand-point-up"></i>
+                                <p>
+                                    @(isArabic ? "POS شاشة لمس" : "POS Touch")
+                                    <i class="fas fa-external-link-alt @(isArabic ? "me-auto" : "ms-auto") fa-xs text-muted"></i>
+                                </p>
+                            </a>
+                        </li>
+                    }
+
+                    @* Menu Management — Manager, SuperAdmin *@
+                    @if (User.IsInRole("Manager") || User.IsInRole("SuperAdmin"))
+                    {
+                        <li class="nav-item">
+                            <a asp-controller="Menu" asp-action="Index" class="nav-link
+                                @(ViewData["ActiveMenu"]?.ToString() == "Menu" ? "active" : "")">
+                                <i class="nav-icon fas fa-utensils"></i>
+                                <p>@(isArabic ? "إدارة القائمة" : "Menu Management")</p>
+                            </a>
+                        </li>
+                    }
+
+                    @* Cash Handover — Cashier, Manager, SuperAdmin *@
+                    @if (User.IsInRole("Cashier") || User.IsInRole("Manager") || User.IsInRole("SuperAdmin"))
+                    {
+                        <li class="nav-item">
+                            <a asp-controller="Handover" asp-action="Index" class="nav-link
+                                @(ViewData["ActiveMenu"]?.ToString() == "Handover" ? "active" : "")">
+                                <i class="nav-icon fas fa-hand-holding-usd"></i>
+                                <p>@(isArabic ? "تسليم الخزينة" : "Cash Handover")</p>
+                            </a>
+                        </li>
+                    }
+
+                    @* Shifts — Manager, SuperAdmin + employees *@
+                    @if (User.IsInRole("Manager") || User.IsInRole("SuperAdmin")
+                      || User.IsInRole("Cashier") || User.IsInRole("Waiter") || User.IsInRole("KitchenStaff"))
+                    {
+                        <li class="nav-item">
+                            <a asp-controller="Shift" asp-action="Index" class="nav-link
+                                @(ViewData["ActiveMenu"]?.ToString() == "Shift" ? "active" : "")">
+                                <i class="nav-icon fas fa-calendar-alt"></i>
+                                <p>@(isArabic ? "الشيفتات" : "Shifts")</p>
+                            </a>
+                        </li>
+                    }
+
+                    @* Reports — Manager, SuperAdmin, Accountant *@
+                    @if (User.IsInRole("Manager") || User.IsInRole("SuperAdmin") || User.IsInRole("Accountant"))
+                    {
+                        <li class="nav-item">
+                            <a asp-controller="Report" asp-action="Index" class="nav-link
+                                @(ViewData["ActiveMenu"]?.ToString() == "Report" ? "active" : "")">
+                                <i class="nav-icon fas fa-chart-bar"></i>
+                                <p>@(isArabic ? "التقارير" : "Reports")</p>
+                            </a>
+                        </li>
+                    }
+
+                    @* Print Settings — Manager, SuperAdmin *@
+                    @if (User.IsInRole("Manager") || User.IsInRole("SuperAdmin"))
+                    {
+                        <li class="nav-item">
+                            <a asp-controller="Printer" asp-action="Index" class="nav-link
+                                @(ViewData["ActiveMenu"]?.ToString() == "Printer" ? "active" : "")">
+                                <i class="nav-icon fas fa-print"></i>
+                                <p>@(isArabic ? "إعدادات الطباعة" : "Print Settings")</p>
+                            </a>
+                        </li>
+                    }
+
+                    @* User Management — SuperAdmin only *@
+                    @if (User.IsInRole("SuperAdmin"))
+                    {
+                        <li class="nav-item">
+                            <a asp-controller="User" asp-action="Index" class="nav-link
+                                @(ViewData["ActiveMenu"]?.ToString() == "Users" ? "active" : "")">
+                                <i class="nav-icon fas fa-users"></i>
+                                <p>@(isArabic ? "إدارة المستخدمين" : "User Management")</p>
+                            </a>
+                        </li>
+                    }
+
+                    @* Settings — SuperAdmin only *@
+                    @if (User.IsInRole("SuperAdmin"))
+                    {
+                        <li class="nav-item">
+                            <a asp-controller="Settings" asp-action="Index" class="nav-link
+                                @(ViewData["ActiveMenu"]?.ToString() == "Settings" ? "active" : "")">
+                                <i class="nav-icon fas fa-cog"></i>
+                                <p>@(isArabic ? "الإعدادات" : "Settings")</p>
+                            </a>
+                        </li>
+                    }
+
+                </ul>
+            </nav>
+        </div>
+    </aside>
+
+    @* ═══════════════════════════════════════════════════════════════════
+       CONTENT WRAPPER
+       ═══════════════════════════════════════════════════════════════════ *@
+    <div class="content-wrapper">
+
+        @* Content Header / Breadcrumbs *@
+        <div class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2 align-items-center">
+                    <div class="col-sm-6">
+                        <h1 class="m-0 fs-5 fw-semibold">@pageTitle</h1>
+                    </div>
+                    <div class="col-sm-6">
+                        <ol class="breadcrumb float-sm-end">
+                            <li class="breadcrumb-item">
+                                <a asp-controller="Home" asp-action="Index">
+                                    <i class="fas fa-home"></i>
+                                </a>
+                            </li>
+                            @foreach (var (label, url) in breadcrumbs)
+                            {
+                                if (url is not null)
+                                {
+                                    <li class="breadcrumb-item"><a href="@url">@label</a></li>
+                                }
+                                else
+                                {
+                                    <li class="breadcrumb-item active">@label</li>
+                                }
+                            }
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Main Content *@
+        <section class="content">
+            <div class="container-fluid">
+                @RenderBody()
+            </div>
+        </section>
+    </div>
+
+    @* ═══════════════════════════════════════════════════════════════════
+       FOOTER
+       ═══════════════════════════════════════════════════════════════════ *@
+    <footer class="main-footer">
+        <div class="float-end d-none d-sm-inline text-muted">
+            v@appVersion
+        </div>
+        <strong>
+            &copy; @DateTime.Now.Year
+            <a href="#" class="text-decoration-none">
+                @(isArabic ? restaurantNameAr : restaurantName)
+            </a>
+        </strong>
+        &nbsp;—&nbsp;
+        @(isArabic ? "جميع الحقوق محفوظة." : "All rights reserved.")
+    </footer>
+
+</div>
+@* end .wrapper *@
+
+@* ═══════════════════════════════════════════════════════════════════════
+   GLOBAL AJAX MODAL
+   ═══════════════════════════════════════════════════════════════════════ *@
+<div class="modal fade" id="ajaxModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="ajaxModalLabel">
+                    @(isArabic ? "تفاصيل" : "Details")
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="ajaxModalContent">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ═══════════════════════════════════════════════════════════════════════
+   SCRIPTS
+   ═══════════════════════════════════════════════════════════════════════ *@
+
+@* jQuery *@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+
+@* Bootstrap 5 *@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+
+@* AdminLTE 3 *@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/js/adminlte.min.js"></script>
+
+@* DataTables + Bootstrap5 + Buttons *@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/datatables/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/datatables/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/datatables-buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/datatables-buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/datatables-buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/datatables-buttons/2.4.2/js/buttons.print.min.js"></script>
+
+@* Select2 *@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-rc.0/js/select2.min.js"></script>
+
+@* Flatpickr *@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
+
+@* Toastr *@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+@* SweetAlert2 *@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.5/sweetalert2.min.js"></script>
+
+@* Chart.js *@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+@* Localization strings (loaded BEFORE app JS) *@
+@if (isArabic)
+{
+    <script src="~/js/localization/ar.js" asp-append-version="true"></script>
+    <script>
+        // Flatpickr Arabic locale
+        flatpickr.localize(flatpickr.l10ns.ar ?? {});
+    </script>
+}
+else
+{
+    <script src="~/js/localization/en.js" asp-append-version="true"></script>
+}
+
+@* Shared app modules *@
+<script src="~/js/shared/notifications.js"      asp-append-version="true"></script>
+<script src="~/js/shared/modals.js"             asp-append-version="true"></script>
+<script src="~/js/shared/datatables-config.js"  asp-append-version="true"></script>
+
+@RenderSection("Scripts", required: false)
+</body>
+</html>
