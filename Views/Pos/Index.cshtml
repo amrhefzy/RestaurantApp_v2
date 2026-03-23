@@ -1,0 +1,260 @@
+@using Microsoft.AspNetCore.Localization
+@{
+    var culture = Context.Features.Get<IRequestCultureFeature>()
+                      ?.RequestCulture.Culture.Name ?? "ar";
+    var isAr    = culture.StartsWith("ar");
+
+    Layout                  = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"]       = isAr ? "نقطة البيع" : "Point of Sale";
+    ViewData["ActiveMenu"]  = "Pos";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/pos.css" asp-append-version="true" />
+}
+
+<div class="pos-wrapper">
+
+    @* ═══════════════ LEFT — MENU PANEL (60%) ═══════════════ *@
+    <div class="pos-menu-panel">
+
+        @* Search bar *@
+        <div class="pos-search-bar">
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" id="menuSearch" class="form-control"
+                       placeholder="@(isAr ? "ابحث عن صنف..." : "Search items...")"
+                       autocomplete="off" />
+            </div>
+            <div class="input-group" style="max-width:170px">
+                <span class="input-group-text"><i class="fas fa-barcode"></i></span>
+                <input type="text" id="barcodeInput" class="form-control"
+                       placeholder="@(isAr ? "باركود" : "Barcode")"
+                       autocomplete="off" />
+            </div>
+            <div class="position-relative">
+                <button id="held-orders-btn" class="btn btn-outline-warning btn-sm"
+                        title="@(isAr ? "الطلبات المعلقة" : "Held Orders")"
+                        style="height:38px;white-space:nowrap">
+                    <i class="fas fa-pause-circle"></i>
+                    <span class="d-none d-md-inline ms-1">@(isAr ? "معلق" : "Held")</span>
+                    <span class="badge bg-danger" id="held-count" style="display:none">0</span>
+                </button>
+            </div>
+        </div>
+
+        @* Category tabs *@
+        <div class="category-tabs-wrapper">
+            <div class="category-tabs" id="categoryTabs">
+                <button class="category-tab active" data-id="">
+                    <i class="fas fa-border-all"></i>
+                    @(isAr ? "الكل" : "All")
+                </button>
+                @* Dynamic tabs injected by JS *@
+            </div>
+        </div>
+
+        @* Menu grid *@
+        <div class="menu-scroll-area">
+            <div class="menu-grid" id="menuGrid">
+                @* Skeleton placeholders *@
+                @for (int i = 0; i < 9; i++)
+                {
+                    <div class="skeleton-card"></div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* ═══════════════ RIGHT — CART PANEL (40%) ═══════════════ *@
+    <div class="pos-cart-panel">
+
+        @* Header *@
+        <div class="cart-header">
+            <i class="fas fa-shopping-cart"></i>
+            <span id="orderNumberDisplay">@(isAr ? "طلب جديد" : "New Order")</span>
+            <span class="badge bg-success ms-auto" id="orderStatusBadge" style="display:none"></span>
+        </div>
+
+        @* Order meta *@
+        <div class="cart-order-meta">
+            <div class="row g-1">
+                <div class="col-7">
+                    <select id="orderType" class="form-select form-select-sm">
+                        <option value="1">@(isAr ? "داخل المطعم" : "Dine In")</option>
+                        <option value="2">@(isAr ? "تيك أواي" : "Takeaway")</option>
+                        <option value="3">@(isAr ? "توصيل" : "Delivery")</option>
+                    </select>
+                </div>
+                <div class="col-5">
+                    <input type="text" id="tableNumber" class="form-control form-control-sm"
+                           placeholder="@(isAr ? "رقم الطاولة" : "Table #")"
+                           maxlength="20" />
+                </div>
+            </div>
+        </div>
+
+        @* Cart items *@
+        <div class="cart-items-area" id="cartItems">
+            <div class="cart-empty-msg" id="cartEmptyMsg">
+                <i class="fas fa-shopping-cart fa-2x mb-2 d-block opacity-25"></i>
+                @(isAr ? "السلة فارغة" : "Cart is empty")
+            </div>
+        </div>
+
+        @* Totals *@
+        <div class="cart-totals">
+            <div class="totals-row">
+                <span>@(isAr ? "المجموع" : "Subtotal")</span>
+                <span id="subtotalDisplay">0.000</span>
+            </div>
+            <div class="totals-row">
+                <span>@(isAr ? "ضريبة (14%)" : "Tax (14%)")</span>
+                <span id="taxDisplay">0.000</span>
+            </div>
+            <div class="totals-row">
+                <span>@(isAr ? "خصم" : "Discount")</span>
+                <input type="number" id="discountInput" class="discount-input"
+                       value="0" min="0" step="0.001" />
+            </div>
+            <div class="totals-row grand-total">
+                <span>@(isAr ? "الإجمالي" : "Total")</span>
+                <span id="totalDisplay">0.000</span>
+            </div>
+        </div>
+
+        @* Action buttons *@
+        <div class="cart-action-bar">
+            <button id="btnClear" class="btn btn-outline-danger btn-sm">
+                <i class="fas fa-trash-alt"></i> @(isAr ? "مسح" : "Clear")
+            </button>
+            <button id="btnHold" class="btn btn-outline-warning btn-sm">
+                <i class="fas fa-pause"></i> @(isAr ? "تعليق" : "Hold")
+            </button>
+            <button id="btnKitchen" class="btn btn-outline-info btn-sm">
+                <i class="fas fa-utensils"></i> @(isAr ? "مطبخ" : "Kitchen")
+            </button>
+            <button id="btnVoid" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-ban"></i> @(isAr ? "إلغاء" : "Void")
+            </button>
+        </div>
+
+        @* Payment buttons *@
+        <div class="payment-buttons">
+            <button id="btnCash" class="btn btn-success">
+                <i class="fas fa-money-bill-wave d-block mb-1 fs-5"></i>
+                @(isAr ? "نقداً" : "CASH")
+            </button>
+            <button id="btnCard" class="btn btn-primary">
+                <i class="fas fa-credit-card d-block mb-1 fs-5"></i>
+                @(isAr ? "بطاقة" : "CARD")
+            </button>
+            <button id="btnSplit" class="btn btn-warning">
+                <i class="fas fa-code-branch d-block mb-1 fs-5"></i>
+                @(isAr ? "تقسيم" : "SPLIT")
+            </button>
+        </div>
+    </div>
+</div>
+
+@* ═══════════════ PAYMENT MODAL ═══════════════ *@
+<div class="modal fade" id="paymentModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="paymentModalTitle">
+                    @(isAr ? "الدفع" : "Payment")
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+
+                @* Cash section *@
+                <div id="cashSection">
+                    <div class="cash-input-display" id="cashDisplay">0.000</div>
+
+                    @* Quick amount buttons *@
+                    <div class="quick-cash-btns mt-2">
+                        <button class="btn btn-outline-secondary btn-sm quick-cash-btn" data-exact="true">
+                            @(isAr ? "المبلغ بالضبط" : "Exact")
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm quick-cash-btn" data-add="1">+1</button>
+                        <button class="btn btn-outline-secondary btn-sm quick-cash-btn" data-add="5">+5</button>
+                        <button class="btn btn-outline-secondary btn-sm quick-cash-btn" data-add="10">+10</button>
+                        <button class="btn btn-outline-secondary btn-sm quick-cash-btn" data-add="50">+50</button>
+                        <button class="btn btn-outline-secondary btn-sm quick-cash-btn" data-add="100">+100</button>
+                        <button class="btn btn-outline-secondary btn-sm quick-cash-btn" data-add="200">+200</button>
+                    </div>
+
+                    @* Numpad *@
+                    <div class="numpad" id="cashNumpad">
+                        @foreach (var label in new[] {"7","8","9","4","5","6","1","2","3"})
+                        {
+                            <button class="numpad-btn" data-key="@label">@label</button>
+                        }
+                        <button class="numpad-btn wide" data-key="0">0</button>
+                        <button class="numpad-btn" data-key="back"><i class="fas fa-backspace"></i></button>
+                    </div>
+
+                    <div class="change-display" id="changeDisplay">
+                        @(isAr ? "المرتجع: " : "Change: ") <span id="changeAmount">0.000</span>
+                    </div>
+                </div>
+
+                @* Card section *@
+                <div id="cardSection" style="display:none">
+                    <div class="text-center py-3">
+                        <i class="fas fa-credit-card fa-3x text-primary mb-3"></i>
+                        <p class="mb-0">@(isAr ? "المبلغ المطلوب" : "Amount Due")</p>
+                        <h3 class="fw-bold text-primary" id="cardTotalDisplay">0.000</h3>
+                        <small class="text-muted">@(isAr ? "مرر البطاقة أو أدخلها" : "Swipe or insert card")</small>
+                    </div>
+                </div>
+
+                @* Split section *@
+                <div id="splitSection" style="display:none">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            @(isAr ? "عدد الأشخاص" : "Number of People")
+                        </label>
+                        <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-outline-secondary" id="splitMinus">−</button>
+                            <span id="splitCount" class="fs-4 fw-bold px-3">2</span>
+                            <button class="btn btn-outline-secondary" id="splitPlus">+</button>
+                        </div>
+                    </div>
+                    <div id="splitAmounts"></div>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    @(isAr ? "إلغاء" : "Cancel")
+                </button>
+                <button type="button" class="btn btn-success btn-lg" id="confirmPaymentBtn">
+                    <i class="fas fa-check me-2"></i>
+                    @(isAr ? "تأكيد الدفع" : "Confirm Payment")
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ═══════════════ HELD ORDERS MODAL ═══════════════ *@
+<div class="modal fade" id="heldOrdersModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">@(isAr ? "الطلبات المعلقة" : "Held Orders")</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="heldOrdersList">
+                <p class="text-muted text-center">@(isAr ? "لا توجد طلبات معلقة" : "No held orders")</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/modules/pos.js" asp-append-version="true"></script>
+}

@@ -1,6 +1,8 @@
 @using Microsoft.AspNetCore.Localization
 @using Microsoft.Extensions.Configuration
+@using Microsoft.AspNetCore.Antiforgery
 @inject IConfiguration Configuration
+@inject IAntiforgery Antiforgery
 
 @{
     var cultureFeature  = Context.Features.Get<IRequestCultureFeature>();
