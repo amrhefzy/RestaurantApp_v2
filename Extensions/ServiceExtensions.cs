@@ -33,6 +33,8 @@ public static class ServiceExtensions
         services.AddScoped<IPosService,      PosService>();
         services.AddScoped<IHandoverService, HandoverService>();
         services.AddScoped<IShiftService,    ShiftService>();
+        services.AddScoped<IReportService,   ReportService>();
+        services.AddScoped<IPrintService,    PrintService>();
 
         return services;
     }

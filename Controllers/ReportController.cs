@@ -48,7 +48,6 @@ public class ReportController(IReportService reportService) : Controller
         model.GeneratedBy = User.Identity?.Name ?? "—";
         model.GeneratedAt = DateTime.UtcNow;
 
-        Layout             = "~/Views/Shared/_LayoutPrint.cshtml";
         ViewData["Layout"] = "~/Views/Shared/_LayoutPrint.cshtml";
         return View(model);
     }
