@@ -1,0 +1,86 @@
+@using Microsoft.AspNetCore.Localization
+@{
+    var culture = Context.Features.Get<IRequestCultureFeature>()
+                      ?.RequestCulture.Culture.Name ?? "ar";
+    var isAr    = culture.StartsWith("ar");
+
+    Layout                  = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"]       = isAr ? "ورداياتي" : "My Shifts";
+    ViewData["ActiveMenu"]  = "Shifts";
+    ViewData["Breadcrumbs"] = new List<(string Label, string? Url)>
+    {
+        (isAr ? "الرئيسية" : "Home",        "/"),
+        (isAr ? "ورداياتي" : "My Shifts",   null)
+    };
+
+    string fromVal = ViewBag.From ?? DateTime.UtcNow.AddDays(-30).ToString("yyyy-MM-dd");
+    string toVal   = ViewBag.To   ?? DateTime.UtcNow.ToString("yyyy-MM-dd");
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+}
+
+<div class="card shadow-sm">
+    <div class="card-header d-flex flex-wrap gap-2 align-items-center">
+        <span class="fw-bold me-auto">
+            <i class="fas fa-id-badge me-2"></i>
+            @(isAr ? "ورداياتي" : "My Shifts")
+        </span>
+        <input type="text" id="filterFrom" class="form-control form-control-sm"
+               style="width:130px" value="@fromVal" />
+        <span>→</span>
+        <input type="text" id="filterTo" class="form-control form-control-sm"
+               style="width:130px" value="@toVal" />
+        <button class="btn btn-primary btn-sm" id="applyMyShifts">
+            <i class="fas fa-filter"></i>
+        </button>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" id="myShiftsTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>@(isAr ? "التاريخ" : "Date")</th>
+                        <th>@(isAr ? "الوردية" : "Shift")</th>
+                        <th>@(isAr ? "المقرر" : "Planned")</th>
+                        <th>@(isAr ? "الدخول" : "Clock In")</th>
+                        <th>@(isAr ? "الخروج" : "Clock Out")</th>
+                        <th>@(isAr ? "وقت إضافي" : "Overtime")</th>
+                        <th>@(isAr ? "الحالة" : "Status")</th>
+                    </tr>
+                </thead>
+                <tbody id="myShiftsTbody">
+                    <tr><td colspan="7" class="text-center py-4 text-muted">
+                        <i class="fas fa-spinner fa-spin me-2"></i>@(isAr ? "جاري التحميل..." : "Loading...")
+                    </td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="~/js/modules/shifts.js" asp-append-version="true"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            flatpickr('#filterFrom', { dateFormat: 'Y-m-d' });
+            flatpickr('#filterTo',   { dateFormat: 'Y-m-d' });
+
+            ShiftsModule.loadMyShifts(
+                document.getElementById('filterFrom').value,
+                document.getElementById('filterTo').value,
+                @(isAr ? "true" : "false")
+            );
+
+            document.getElementById('applyMyShifts').addEventListener('click', () => {
+                ShiftsModule.loadMyShifts(
+                    document.getElementById('filterFrom').value,
+                    document.getElementById('filterTo').value,
+                    @(isAr ? "true" : "false")
+                );
+            });
+        });
+    </script>
+}

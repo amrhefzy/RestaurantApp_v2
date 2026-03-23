@@ -1,0 +1,125 @@
+@using Microsoft.AspNetCore.Localization
+@{
+    var culture = Context.Features.Get<IRequestCultureFeature>()
+                      ?.RequestCulture.Culture.Name ?? "ar";
+    var isAr    = culture.StartsWith("ar");
+
+    Layout                  = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"]       = isAr ? "جدول الورديات" : "Shift Schedule";
+    ViewData["ActiveMenu"]  = "Shifts";
+    ViewData["Breadcrumbs"] = new List<(string Label, string? Url)>
+    {
+        (isAr ? "الرئيسية" : "Home",              "/"),
+        (isAr ? "جدول الورديات" : "Shift Schedule", null)
+    };
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" />
+    <style>
+        #shiftCalendar { height: 640px; }
+        .fc-event      { cursor: pointer; font-size: .8rem; }
+        .shift-legend-dot {
+            width: 12px; height: 12px; border-radius: 50%; display: inline-block;
+        }
+    </style>
+}
+
+<div class="card shadow-sm">
+    <div class="card-header d-flex flex-wrap gap-2 align-items-center">
+        <span class="fw-bold me-auto">
+            <i class="fas fa-calendar-alt me-2"></i>
+            @(isAr ? "جدول الورديات" : "Shift Schedule")
+        </span>
+        @* Legend *@
+        <div class="d-flex gap-3 align-items-center small">
+            <span><span class="shift-legend-dot me-1" style="background:#95a5a6"></span>@(isAr ? "مجدول" : "Scheduled")</span>
+            <span><span class="shift-legend-dot me-1" style="background:#27ae60"></span>@(isAr ? "نشط" : "Active")</span>
+            <span><span class="shift-legend-dot me-1" style="background:#2980b9"></span>@(isAr ? "مكتمل" : "Completed")</span>
+            <span><span class="shift-legend-dot me-1" style="background:#e74c3c"></span>@(isAr ? "غائب" : "Absent")</span>
+        </div>
+        <button class="btn btn-primary btn-sm" id="assignShiftBtn">
+            <i class="fas fa-plus me-1"></i>
+            @(isAr ? "تعيين وردية" : "Assign Shift")
+        </button>
+    </div>
+    <div class="card-body">
+        <div id="shiftCalendar"></div>
+    </div>
+</div>
+
+@* ── Assign Shift Modal ─────────────────────────────────────────────────────── *@
+<div class="modal fade" id="assignModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-clock me-2"></i>
+                    @(isAr ? "تعيين وردية" : "Assign Shift")
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">@(isAr ? "الموظف" : "Employee")</label>
+                    <select id="assignEmployee" class="form-select">
+                        <option value="">@(isAr ? "اختر موظف..." : "Select employee...")</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">@(isAr ? "نموذج الوردية" : "Shift Template")</label>
+                    <select id="assignTemplate" class="form-select">
+                        <option value="">@(isAr ? "اختر وردية..." : "Select shift...")</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">@(isAr ? "التاريخ" : "Date")</label>
+                    <input type="date" id="assignDate" class="form-control" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">@(isAr ? "إلغاء" : "Cancel")</button>
+                <button class="btn btn-primary" id="confirmAssignBtn">
+                    <i class="fas fa-check me-1"></i>@(isAr ? "تعيين" : "Assign")
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ── Shift Detail Popup ─────────────────────────────────────────────────────── *@
+<div class="modal fade" id="shiftDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailTitle">—</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailBody">—</div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+    <script src="~/js/modules/shifts.js" asp-append-version="true"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            ShiftsModule.initCalendar(@(isAr ? "true" : "false"));
+
+            document.getElementById('assignShiftBtn').addEventListener('click', () => {
+                document.getElementById('assignDate').value =
+                    new Date().toISOString().split('T')[0];
+                new bootstrap.Modal(document.getElementById('assignModal')).show();
+            });
+
+            document.getElementById('confirmAssignBtn').addEventListener('click', () => {
+                ShiftsModule.assignShift({
+                    employeeId: parseInt(document.getElementById('assignEmployee').value),
+                    templateId: parseInt(document.getElementById('assignTemplate').value),
+                    shiftDate:  document.getElementById('assignDate').value,
+                });
+            });
+        });
+    </script>
+}

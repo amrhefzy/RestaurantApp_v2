@@ -1,0 +1,116 @@
+@using Microsoft.AspNetCore.Localization
+@{
+    var culture = Context.Features.Get<IRequestCultureFeature>()
+                      ?.RequestCulture.Culture.Name ?? "ar";
+    var isAr    = culture.StartsWith("ar");
+
+    Layout                  = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"]       = isAr ? "تسجيل الدخول/الخروج" : "Clock In / Out";
+    ViewData["ActiveMenu"]  = "Shifts";
+    ViewData["Breadcrumbs"] = new List<(string Label, string? Url)>
+    {
+        (isAr ? "الرئيسية" : "Home",                       "/"),
+        (isAr ? "تسجيل الدخول/الخروج" : "Clock In / Out", null)
+    };
+}
+
+@section Styles {
+    <style>
+        .clock-card      { max-width: 480px; margin: 0 auto; }
+        .clock-time      {
+            font-size: 3.2rem; font-weight: 700; text-align: center;
+            color: var(--primary-color); font-variant-numeric: tabular-nums;
+        }
+        .clock-date      { text-align: center; color: #6c757d; font-size: 1rem; }
+        .clock-in-btn, .clock-out-btn {
+            height: 80px; font-size: 1.4rem; font-weight: 700;
+            border-radius: .75rem; width: 100%;
+        }
+        .employee-search {
+            font-size: 1.1rem; height: 52px;
+        }
+    </style>
+}
+
+<div class="row justify-content-center g-4">
+
+    @* ── Clock panel ───────────────────────────────────────────────────────── *@
+    <div class="col-md-6 clock-card">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body py-4">
+                <div class="clock-time" id="clockDisplay">00:00:00</div>
+                <div class="clock-date" id="dateDisplay">—</div>
+            </div>
+        </div>
+
+        @* Active shift info *@
+        <div id="activeShiftPanel" style="display:none">
+            <div class="alert alert-success">
+                <i class="fas fa-user-clock me-2"></i>
+                <strong id="activeShiftName">—</strong>
+                <div class="small mt-1">
+                    @(isAr ? "منذ" : "Since") <span id="activeClockIn">—</span>
+                </div>
+            </div>
+            <button class="clock-out-btn btn btn-danger mb-4" id="clockOutBtn">
+                <i class="fas fa-sign-out-alt me-2"></i>
+                @(isAr ? "تسجيل الخروج" : "Clock Out")
+            </button>
+        </div>
+
+        @* No active shift → show clock-in form *@
+        <div id="clockInPanel">
+            <div class="mb-3">
+                <label class="form-label fw-semibold">
+                    @(isAr ? "ابحث عن الموظف" : "Search Employee")
+                </label>
+                <input type="text" id="employeeSearch" class="form-control employee-search"
+                       placeholder="@(isAr ? "اسم الموظف..." : "Employee name...")"
+                       autocomplete="off" />
+                <div id="employeeSuggestions" class="list-group mt-1" style="display:none"></div>
+                <input type="hidden" id="selectedEmployeeId" />
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-semibold">
+                    @(isAr ? "الوردية" : "Shift Template")
+                </label>
+                <select id="templateSelect" class="form-select fs-5">
+                    <option value="">@(isAr ? "اختر الوردية..." : "Select shift...")</option>
+                </select>
+            </div>
+
+            <button class="clock-in-btn btn btn-success" id="clockInBtn">
+                <i class="fas fa-sign-in-alt me-2"></i>
+                @(isAr ? "تسجيل الدخول" : "Clock In")
+            </button>
+        </div>
+    </div>
+
+    @* ── Recent clock-ins ──────────────────────────────────────────────────── *@
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header fw-bold">
+                <i class="fas fa-history me-2"></i>
+                @(isAr ? "آخر تسجيلات الدخول" : "Recent Clock-Ins")
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush" id="recentClockIns">
+                    <li class="list-group-item text-muted text-center py-3">
+                        <i class="fas fa-spinner fa-spin me-2"></i>
+                        @(isAr ? "جاري التحميل..." : "Loading...")
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/modules/shifts.js" asp-append-version="true"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            ShiftsModule.initClockIn(@(isAr ? "true" : "false"));
+        });
+    </script>
+}
