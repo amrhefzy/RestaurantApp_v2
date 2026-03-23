@@ -1,0 +1,169 @@
+@using Microsoft.AspNetCore.Localization
+@model RestaurantMS.Models.ViewModels.LoginViewModel
+@{
+    Layout = null;
+    var culture = Context.Features.Get<IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "ar";
+    var isAr = culture.StartsWith("ar");
+    var dir  = isAr ? "rtl" : "ltr";
+}
+<!DOCTYPE html>
+<html lang="@(isAr ? "ar" : "en")" dir="@dir">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@(isAr ? "تسجيل الدخول" : "Login") — RestaurantMS</title>
+    @if (isAr)
+    {
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.rtl.min.css" />
+        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    }
+    else
+    {
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    }
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            font-family: @(isAr ? "'Cairo'" : "'Inter'"), sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .login-card {
+            background: rgba(255,255,255,0.97);
+            border-radius: 20px;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.4);
+        }
+        .brand-mark {
+            width: 60px; height: 60px;
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            border-radius: 16px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.8rem; color: #fff; font-weight: 800;
+            margin: 0 auto 1rem;
+            box-shadow: 0 8px 24px rgba(231,76,60,0.35);
+        }
+        .login-title { font-size: 1.5rem; font-weight: 700; color: #1a1a2e; text-align: center; }
+        .login-subtitle { color: #6c757d; text-align: center; font-size: 0.9rem; margin-top: 4px; }
+        .form-label { font-weight: 600; font-size: 0.88rem; color: #374151; }
+        .form-control {
+            border-radius: 10px; border: 1.5px solid #e5e7eb;
+            padding: .65rem 1rem; font-size: 0.95rem;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .form-control:focus { border-color: #e74c3c; box-shadow: 0 0 0 3px rgba(231,76,60,0.15); }
+        .input-group-text {
+            border-radius: 10px 0 0 10px; background: #f9fafb;
+            border: 1.5px solid #e5e7eb; border-right: none; color: #6b7280;
+        }
+        [dir="rtl"] .input-group-text { border-radius: 0 10px 10px 0; border-right: 1.5px solid #e5e7eb; border-left: none; }
+        .input-group .form-control { border-radius: 0 10px 10px 0; }
+        [dir="rtl"] .input-group .form-control { border-radius: 10px 0 0 10px; }
+        .btn-login {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            border: none; border-radius: 10px; color: #fff;
+            font-weight: 700; font-size: 1rem; padding: .75rem;
+            width: 100%; transition: transform .15s, opacity .15s;
+            box-shadow: 0 4px 14px rgba(231,76,60,0.4);
+        }
+        .btn-login:hover { opacity: .9; transform: translateY(-1px); color: #fff; }
+        .btn-login:active { transform: scale(.97); }
+        .lang-toggle { text-align: center; margin-top: 1.5rem; }
+        .lang-toggle a { color: #6c757d; font-size: 0.85rem; text-decoration: none; }
+        .lang-toggle a:hover { color: #1a1a2e; }
+        .alert { border-radius: 10px; font-size: 0.9rem; }
+        .form-check-label { font-size: 0.88rem; color: #6c757d; }
+    </style>
+</head>
+<body>
+<div class="login-card">
+    <div class="brand-mark">R</div>
+    <h1 class="login-title">RestaurantMS</h1>
+    <p class="login-subtitle">@(isAr ? "نظام إدارة المطعم" : "Restaurant Operating System")</p>
+
+    <hr class="my-4" />
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-danger d-flex align-items-center gap-2" role="alert">
+            <i class="fas fa-exclamation-circle"></i>
+            <div>
+                @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                {
+                    <div>@error.ErrorMessage</div>
+                }
+            </div>
+        </div>
+    }
+
+    <form asp-controller="Account" asp-action="Login" method="post" autocomplete="on">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="ReturnUrl" />
+
+        <div class="mb-3">
+            <label class="form-label">
+                <i class="fas fa-user @(isAr ? "ms-1" : "me-1")"></i>
+                @(isAr ? "اسم المستخدم أو البريد الإلكتروني" : "Username or Email")
+            </label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-user fa-sm"></i></span>
+                <input asp-for="UserName"
+                       class="form-control"
+                       placeholder="@(isAr ? "admin" : "admin")"
+                       autocomplete="username"
+                       autofocus />
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">
+                <i class="fas fa-lock @(isAr ? "ms-1" : "me-1")"></i>
+                @(isAr ? "كلمة المرور" : "Password")
+            </label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-lock fa-sm"></i></span>
+                <input asp-for="Password"
+                       type="password"
+                       class="form-control"
+                       placeholder="••••••••"
+                       autocomplete="current-password" />
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="form-check">
+                <input asp-for="RememberMe" class="form-check-input" type="checkbox" />
+                <label class="form-check-label" asp-for="RememberMe">
+                    @(isAr ? "تذكرني" : "Remember me")
+                </label>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-login">
+            <i class="fas fa-sign-in-alt @(isAr ? "ms-2" : "me-2")"></i>
+            @(isAr ? "تسجيل الدخول" : "Sign In")
+        </button>
+    </form>
+
+    <div class="lang-toggle">
+        <form asp-controller="Language" asp-action="Set" method="post" class="d-inline">
+            <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+            @Html.AntiForgeryToken()
+            <button type="submit" name="culture" value="ar" class="btn btn-link p-0 @(isAr ? "fw-bold" : "")">🇸🇦 العربية</button>
+            &nbsp;·&nbsp;
+            <button type="submit" name="culture" value="en" class="btn btn-link p-0 @(!isAr ? "fw-bold" : "")">🇬🇧 English</button>
+        </form>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

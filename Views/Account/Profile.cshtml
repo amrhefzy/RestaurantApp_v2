@@ -1,0 +1,54 @@
+@using RestaurantMS.Models.Domain
+@using Microsoft.AspNetCore.Localization
+@model ApplicationUser
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Profile";
+    var culture = Context.Features.Get<IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "ar";
+    var isAr = culture.StartsWith("ar");
+}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-user-circle me-2"></i>@(isAr ? "الملف الشخصي" : "My Profile")</h5>
+            </div>
+            <div class="card-body">
+                @if (Model is not null)
+                {
+                    <table class="table table-borderless">
+                        <tr>
+                            <th class="text-muted" style="width:40%">@(isAr ? "اسم المستخدم" : "Username")</th>
+                            <td>@Model.UserName</td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted">@(isAr ? "الاسم بالعربية" : "Arabic Name")</th>
+                            <td>@Model.FullNameAr</td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted">@(isAr ? "الاسم بالإنجليزية" : "English Name")</th>
+                            <td>@Model.FullNameEn</td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted">@(isAr ? "البريد الإلكتروني" : "Email")</th>
+                            <td>@Model.Email</td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted">@(isAr ? "الحالة" : "Status")</th>
+                            <td>
+                                @if (Model.IsActive)
+                                {
+                                    <span class="badge bg-success">@(isAr ? "نشط" : "Active")</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">@(isAr ? "معطل" : "Inactive")</span>
+                                }
+                            </td>
+                        </tr>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+</div>

@@ -398,6 +398,62 @@ public class PosService(
         }).ToList(),
     };
 
+    // ── State-machine transitions ─────────────────────────────────────────────
+    public async Task<ApiResponse<bool>> SendToKitchenAsync(int orderId)
+        => await TransitionStatusAsync(orderId,
+            allowed: [OrderStatus.Open, OrderStatus.Held],
+            next: OrderStatus.SentToKitchen,
+            "Order sent to kitchen.");
+
+    public async Task<ApiResponse<bool>> MarkPreparingAsync(int orderId)
+        => await TransitionStatusAsync(orderId,
+            allowed: [OrderStatus.SentToKitchen],
+            next: OrderStatus.Preparing,
+            "Order marked as preparing.");
+
+    public async Task<ApiResponse<bool>> MarkReadyAsync(int orderId)
+        => await TransitionStatusAsync(orderId,
+            allowed: [OrderStatus.Preparing],
+            next: OrderStatus.Ready,
+            "Order ready for pickup.");
+
+    public async Task<ApiResponse<bool>> MarkServedAsync(int orderId)
+        => await TransitionStatusAsync(orderId,
+            allowed: [OrderStatus.Ready],
+            next: OrderStatus.Served,
+            "Order served.");
+
+    public async Task<ApiResponse<List<PosOrderDto>>> GetKitchenOrdersAsync()
+    {
+        var kitchenStatuses = new[] { OrderStatus.SentToKitchen, OrderStatus.Preparing, OrderStatus.Ready };
+        var orders = await _uow.Orders.FindAsync(
+            o => kitchenStatuses.Contains(o.Status));
+        var full = new List<PosOrderDto>();
+        foreach (var o in orders)
+        {
+            var detail = await _uow.Orders.GetOrderWithItemsAsync(o.Id);
+            if (detail is not null) full.Add(MapOrder(detail));
+        }
+        return ApiResponse<List<PosOrderDto>>.Ok(full);
+    }
+
+    private async Task<ApiResponse<bool>> TransitionStatusAsync(
+        int orderId,
+        OrderStatus[] allowed,
+        OrderStatus next,
+        string message)
+    {
+        var order = await _uow.Orders.GetByIdTrackedAsync(orderId);
+        if (order is null)
+            return ApiResponse<bool>.Fail("Order not found.", 404);
+        if (!allowed.Contains(order.Status))
+            return ApiResponse<bool>.Fail($"Cannot transition from {order.Status} to {next}.");
+
+        order.Status = next;
+        await _uow.CompleteAsync();
+        return ApiResponse<bool>.Ok(true, message);
+    }
+
     private static MenuItemDto MapMenuItem(MenuItem m) => new()
     {
         Id             = m.Id,

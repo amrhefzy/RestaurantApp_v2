@@ -154,6 +154,23 @@ public class PosController(IPosService posService) : Controller
         var result = await _posService.GetOrderDetailsAsync(orderId);
         return Json(result);
     }
+
+    // ── Kitchen state machine ─────────────────────────────────────────────────
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SendToKitchen([FromBody] HoldOrderDto req)
+    {
+        var result = await _posService.SendToKitchenAsync(req.OrderId);
+        return Json(result);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MarkServed([FromBody] HoldOrderDto req)
+    {
+        var result = await _posService.MarkServedAsync(req.OrderId);
+        return Json(result);
+    }
 }
 
 // ── Inline micro-DTOs (controller-only, no service dependency) ────────────────

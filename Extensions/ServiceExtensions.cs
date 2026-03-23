@@ -30,11 +30,12 @@ public static class ServiceExtensions
     // ── Application Services ──────────────────────────────────────────────────
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
-        services.AddScoped<IPosService,      PosService>();
-        services.AddScoped<IHandoverService, HandoverService>();
-        services.AddScoped<IShiftService,    ShiftService>();
-        services.AddScoped<IReportService,   ReportService>();
-        services.AddScoped<IPrintService,    PrintService>();
+        services.AddScoped<IPosService,       PosService>();
+        services.AddScoped<IHandoverService,  HandoverService>();
+        services.AddScoped<IShiftService,     ShiftService>();
+        services.AddScoped<IReportService,    ReportService>();
+        services.AddScoped<IPrintService,     PrintService>();
+        services.AddScoped<IDashboardService, DashboardService>();
 
         return services;
     }

@@ -1,0 +1,378 @@
+@using Microsoft.AspNetCore.Localization
+@using RestaurantMS.Models.DTOs
+@model DashboardDto
+@{
+    Layout = "_Layout";
+    ViewData["Title"]      = "Dashboard";
+    ViewData["ActiveMenu"] = "Dashboard";
+    var culture = Context.Features.Get<IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "ar";
+    var isAr = culture.StartsWith("ar");
+    var m = Model ?? new DashboardDto();
+}
+
+@section Styles {
+<style>
+    .kpi-card {
+        border-radius: 16px;
+        border: none;
+        padding: 1.4rem 1.6rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+        transition: transform .2s, box-shadow .2s;
+        overflow: hidden;
+        position: relative;
+    }
+    .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
+    .kpi-icon {
+        width: 56px; height: 56px; border-radius: 14px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.5rem; flex-shrink: 0;
+    }
+    .kpi-value { font-size: 1.7rem; font-weight: 800; line-height: 1; }
+    .kpi-label { font-size: 0.82rem; font-weight: 600; opacity: .7; margin-top: 4px; }
+    .kpi-trend { font-size: 0.8rem; font-weight: 600; margin-top: 6px; }
+    .kpi-bg-shape {
+        position: absolute; right: -20px; bottom: -20px;
+        width: 100px; height: 100px; border-radius: 50%;
+        opacity: 0.06; font-size: 5rem;
+        display: flex; align-items: center; justify-content: center;
+    }
+    [dir="rtl"] .kpi-bg-shape { right: auto; left: -20px; }
+
+    .chart-card { border-radius: 16px; border: none; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+    .chart-card .card-header { background: transparent; border-bottom: 1px solid rgba(0,0,0,0.06); padding: 1rem 1.25rem; }
+
+    .order-badge {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 3px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: 600;
+    }
+    .elapsed-badge {
+        font-size: 0.75rem; font-weight: 700;
+        padding: 2px 8px; border-radius: 8px;
+    }
+    .elapsed-ok   { background: #d1fae5; color: #065f46; }
+    .elapsed-warn { background: #fef3c7; color: #92400e; }
+    .elapsed-late { background: #fee2e2; color: #991b1b; }
+
+    .table-active-orders td { vertical-align: middle; }
+    .refresh-indicator { font-size: 0.78rem; color: #9ca3af; }
+
+    .best-seller-bar {
+        height: 8px; border-radius: 4px; background: #e9ecef; overflow: hidden;
+    }
+    .best-seller-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg,#6366f1,#8b5cf6); }
+</style>
+}
+
+@* ── KPI Row ──────────────────────────────────────────────────────────────── *@
+<div class="row g-3 mb-4">
+    @* Sales Today *@
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card bg-white">
+            <div class="kpi-icon" style="background:#fef3c7;">
+                <i class="fas fa-coins" style="color:#f59e0b;"></i>
+            </div>
+            <div>
+                <div class="kpi-value text-dark">@m.TodaySales.ToString("N2")</div>
+                <div class="kpi-label">@(isAr ? "مبيعات اليوم (EGP)" : "Today's Sales (EGP)")</div>
+                <div class="kpi-trend text-success">
+                    <i class="fas fa-receipt fa-xs me-1"></i>
+                    @m.TodayOrders @(isAr ? "طلب" : "orders")
+                </div>
+            </div>
+            <div class="kpi-bg-shape"><i class="fas fa-coins"></i></div>
+        </div>
+    </div>
+
+    @* Active Orders *@
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card bg-white">
+            <div class="kpi-icon" style="background:#e0f2fe;">
+                <i class="fas fa-fire-alt" style="color:#0ea5e9;"></i>
+            </div>
+            <div>
+                <div class="kpi-value text-dark">@m.ActiveOrders</div>
+                <div class="kpi-label">@(isAr ? "طلبات نشطة" : "Active Orders")</div>
+                <div class="kpi-trend text-primary">
+                    @if (m.ActiveOrders > 0)
+                    {
+                        <i class="fas fa-circle-notch fa-spin fa-xs me-1"></i>
+                        @(isAr ? "قيد التنفيذ" : "In progress")
+                    }
+                    else
+                    {
+                        <span class="text-muted">@(isAr ? "لا يوجد" : "None")</span>
+                    }
+                </div>
+            </div>
+            <div class="kpi-bg-shape"><i class="fas fa-fire-alt"></i></div>
+        </div>
+    </div>
+
+    @* Active Shifts *@
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card bg-white">
+            <div class="kpi-icon" style="background:#f0fdf4;">
+                <i class="fas fa-user-clock" style="color:#22c55e;"></i>
+            </div>
+            <div>
+                <div class="kpi-value text-dark">@m.ActiveShifts</div>
+                <div class="kpi-label">@(isAr ? "وردية نشطة" : "Active Shifts")</div>
+                <div class="kpi-trend text-success">
+                    <i class="fas fa-clock fa-xs me-1"></i>
+                    @DateTime.Now.ToString("HH:mm")
+                </div>
+            </div>
+            <div class="kpi-bg-shape"><i class="fas fa-user-clock"></i></div>
+        </div>
+    </div>
+
+    @* Avg Order / Alerts *@
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card bg-white">
+            <div class="kpi-icon" style="background:@(m.PendingHandovers > 0 ? "#fef2f2" : "#f5f3ff");">
+                <i class="fas @(m.PendingHandovers > 0 ? "fa-exclamation-triangle" : "fa-chart-line")"
+                   style="color:@(m.PendingHandovers > 0 ? "#ef4444" : "#8b5cf6");"></i>
+            </div>
+            <div>
+                @if (m.PendingHandovers > 0)
+                {
+                    <div class="kpi-value" style="color:#ef4444;">@m.PendingHandovers</div>
+                    <div class="kpi-label text-danger">@(isAr ? "تسليمات معلقة" : "Pending Handovers")</div>
+                    <div class="kpi-trend text-danger">
+                        <i class="fas fa-exclamation-circle fa-xs me-1"></i>
+                        @(isAr ? "تحتاج مراجعة" : "Need review")
+                    </div>
+                }
+                else
+                {
+                    <div class="kpi-value text-dark">@m.AvgOrderValue.ToString("N2")</div>
+                    <div class="kpi-label">@(isAr ? "متوسط قيمة الطلب" : "Avg Order Value")</div>
+                    <div class="kpi-trend" style="color:#8b5cf6;">
+                        <i class="fas fa-arrow-up fa-xs me-1"></i> EGP
+                    </div>
+                }
+            </div>
+            <div class="kpi-bg-shape">
+                <i class="fas @(m.PendingHandovers > 0 ? "fa-exclamation-triangle" : "fa-chart-line")"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ── Charts Row ───────────────────────────────────────────────────────────── *@
+<div class="row g-3 mb-4">
+    @* Hourly Sales Chart *@
+    <div class="col-lg-7">
+        <div class="card chart-card h-100">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h6 class="mb-0 fw-bold">
+                    <i class="fas fa-chart-area @(isAr ? "ms-2" : "me-2") text-primary"></i>
+                    @(isAr ? "المبيعات بالساعة — اليوم" : "Hourly Sales — Today")
+                </h6>
+                <button class="btn btn-sm btn-outline-secondary" onclick="refreshDashboard()">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+            <div class="card-body">
+                <canvas id="hourlySalesChart" height="120"></canvas>
+            </div>
+        </div>
+    </div>
+
+    @* Best Sellers *@
+    <div class="col-lg-5">
+        <div class="card chart-card h-100">
+            <div class="card-header">
+                <h6 class="mb-0 fw-bold">
+                    <i class="fas fa-star @(isAr ? "ms-2" : "me-2") text-warning"></i>
+                    @(isAr ? "الأكثر مبيعاً (٧ أيام)" : "Best Sellers (7 Days)")
+                </h6>
+            </div>
+            <div class="card-body p-3">
+                @{
+                    var maxRev = m.BestSellers.Any() ? m.BestSellers.Max(b => b.TotalRevenue) : 1m;
+                }
+                @if (!m.BestSellers.Any())
+                {
+                    <p class="text-muted text-center py-4">
+                        <i class="fas fa-database fa-2x mb-2 d-block opacity-25"></i>
+                        @(isAr ? "لا توجد بيانات" : "No data yet")
+                    </p>
+                }
+                else
+                {
+                    <div class="d-flex flex-column gap-2">
+                        @foreach (var item in m.BestSellers.Take(6))
+                        {
+                            var pct = maxRev > 0 ? (int)((item.TotalRevenue / maxRev) * 100) : 0;
+                            <div>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <small class="fw-semibold text-truncate" style="max-width:140px">
+                                        @(isAr ? item.NameAr : item.NameEn)
+                                    </small>
+                                    <small class="text-muted fw-bold">@item.TotalRevenue.ToString("N0")</small>
+                                </div>
+                                <div class="best-seller-bar">
+                                    <div class="best-seller-fill" style="width:@pct%"></div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ── Active Orders Table ──────────────────────────────────────────────────── *@
+<div class="card chart-card">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <h6 class="mb-0 fw-bold">
+            <i class="fas fa-list-alt @(isAr ? "ms-2" : "me-2") text-info"></i>
+            @(isAr ? "الطلبات النشطة" : "Active Orders")
+            <span class="badge bg-info ms-2" id="active-count">@m.ActiveOrders</span>
+        </h6>
+        <div class="d-flex align-items-center gap-3">
+            <span class="refresh-indicator" id="refresh-timer">
+                <i class="fas fa-sync-alt fa-spin me-1"></i>
+                @(isAr ? "تحديث تلقائي" : "Auto-refresh")
+            </span>
+            <a href="/Pos/Touch" target="_blank" class="btn btn-sm btn-primary">
+                <i class="fas fa-hand-point-up @(isAr ? "ms-1" : "me-1")"></i>
+                @(isAr ? "فتح POS" : "Open POS")
+            </a>
+            <a href="/Kitchen/Display" target="_blank" class="btn btn-sm btn-warning">
+                <i class="fas fa-utensils @(isAr ? "ms-1" : "me-1")"></i>
+                @(isAr ? "المطبخ" : "Kitchen")
+            </a>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 table-active-orders">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">@(isAr ? "رقم الطلب" : "Order #")</th>
+                        <th>@(isAr ? "النوع" : "Type")</th>
+                        <th>@(isAr ? "الطاولة" : "Table")</th>
+                        <th>@(isAr ? "الحالة" : "Status")</th>
+                        <th>@(isAr ? "الوقت" : "Time")</th>
+                        <th class="text-end pe-3">@(isAr ? "الإجمالي" : "Total")</th>
+                    </tr>
+                </thead>
+                <tbody id="active-orders-tbody">
+                    @if (!m.ActiveOrdersList.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="fas fa-inbox fa-2x mb-2 d-block opacity-25"></i>
+                                @(isAr ? "لا توجد طلبات نشطة" : "No active orders")
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var o in m.ActiveOrdersList)
+                        {
+                            var elClass = o.ElapsedMin < 15 ? "elapsed-ok" : o.ElapsedMin < 30 ? "elapsed-warn" : "elapsed-late";
+                            <tr>
+                                <td class="ps-3 fw-semibold">@o.OrderNumber</td>
+                                <td><small class="text-muted">@o.OrderType</small></td>
+                                <td>@o.TableNumber</td>
+                                <td>
+                                    <span class="badge bg-@o.StatusClass">@o.Status</span>
+                                </td>
+                                <td>
+                                    <span class="elapsed-badge @elClass">@o.ElapsedMin min</span>
+                                </td>
+                                <td class="text-end pe-3 fw-bold">@o.Total.ToString("N2")</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+const isAr = @(isAr.ToString().ToLower());
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+
+// ── Hourly Sales Chart ─────────────────────────────────────────────────────
+const hourlyData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(m.HourlySales));
+const labels = Array.from({length:24}, (_,i) => `${String(i).padStart(2,'0')}:00`);
+const salesData = new Array(24).fill(0);
+hourlyData.forEach(h => { salesData[h.hour] = h.totalAmount; });
+
+const ctx = document.getElementById('hourlySalesChart').getContext('2d');
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels,
+        datasets: [{
+            label: isAr ? 'المبيعات (EGP)' : 'Sales (EGP)',
+            data: salesData,
+            borderColor: '#6366f1',
+            backgroundColor: 'rgba(99,102,241,0.08)',
+            borderWidth: 2.5,
+            pointRadius: 4,
+            pointBackgroundColor: '#6366f1',
+            fill: true,
+            tension: 0.4
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: ctx => `EGP ${ctx.parsed.y.toFixed(2)}`
+                }
+            }
+        },
+        scales: {
+            x: { grid: { display: false }, ticks: { maxTicksLimit: 12 } },
+            y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } }
+        }
+    }
+});
+
+// ── Auto-refresh active orders ─────────────────────────────────────────────
+async function refreshDashboard() {
+    try {
+        const res  = await fetch('/Dashboard/GetActiveOrders');
+        const data = await res.json();
+        if (!data.success) return;
+        const orders = data.data ?? [];
+        document.getElementById('active-count').textContent = orders.length;
+        const tbody = document.getElementById('active-orders-tbody');
+        if (orders.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">
+                <i class="fas fa-inbox fa-2x mb-2 d-block opacity-25"></i>
+                ${isAr ? 'لا توجد طلبات نشطة' : 'No active orders'}</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = orders.map(o => {
+            const elClass = o.elapsedMin < 15 ? 'elapsed-ok' : o.elapsedMin < 30 ? 'elapsed-warn' : 'elapsed-late';
+            return `<tr>
+                <td class="ps-3 fw-semibold">${o.orderNumber}</td>
+                <td><small class="text-muted">${o.orderType}</small></td>
+                <td>${o.tableNumber}</td>
+                <td><span class="badge bg-${o.statusClass}">${o.status}</span></td>
+                <td><span class="elapsed-badge ${elClass}">${o.elapsedMin} min</span></td>
+                <td class="text-end pe-3 fw-bold">${o.total.toFixed(2)}</td>
+            </tr>`;
+        }).join('');
+    } catch (e) { console.error('Dashboard refresh error', e); }
+}
+
+// Auto-refresh every 30 seconds
+setInterval(refreshDashboard, 30000);
+</script>
+}

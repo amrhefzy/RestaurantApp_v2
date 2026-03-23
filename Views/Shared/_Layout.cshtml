@@ -227,7 +227,7 @@
 
                     @* Dashboard — all roles *@
                     <li class="nav-item">
-                        <a asp-controller="Home" asp-action="Index" class="nav-link
+                        <a asp-controller="Dashboard" asp-action="Index" class="nav-link
                             @(ViewData["ActiveMenu"]?.ToString() == "Dashboard" ? "active" : "")">
                             <i class="nav-icon fas fa-tachometer-alt"></i>
                             <p>@(isArabic ? "الرئيسية" : "Dashboard")</p>
@@ -250,11 +250,26 @@
                     @if (User.IsInRole("Cashier") || User.IsInRole("Manager") || User.IsInRole("SuperAdmin"))
                     {
                         <li class="nav-item">
-                            <a asp-controller="PosTouch" asp-action="Index"
+                            <a asp-controller="Pos" asp-action="Touch"
                                class="nav-link" target="_blank" rel="noopener">
                                 <i class="nav-icon fas fa-hand-point-up"></i>
                                 <p>
                                     @(isArabic ? "POS شاشة لمس" : "POS Touch")
+                                    <i class="fas fa-external-link-alt @(isArabic ? "me-auto" : "ms-auto") fa-xs text-muted"></i>
+                                </p>
+                            </a>
+                        </li>
+                    }
+
+                    @* Kitchen Display — KitchenStaff, Manager, SuperAdmin *@
+                    @if (User.IsInRole("KitchenStaff") || User.IsInRole("Manager") || User.IsInRole("SuperAdmin"))
+                    {
+                        <li class="nav-item">
+                            <a asp-controller="Kitchen" asp-action="Display"
+                               class="nav-link" target="_blank" rel="noopener">
+                                <i class="nav-icon fas fa-fire-alt"></i>
+                                <p>
+                                    @(isArabic ? "شاشة المطبخ" : "Kitchen Display")
                                     <i class="fas fa-external-link-alt @(isArabic ? "me-auto" : "ms-auto") fa-xs text-muted"></i>
                                 </p>
                             </a>
@@ -277,7 +292,7 @@
                     @if (User.IsInRole("Cashier") || User.IsInRole("Manager") || User.IsInRole("SuperAdmin"))
                     {
                         <li class="nav-item">
-                            <a asp-controller="Handover" asp-action="Index" class="nav-link
+                            <a asp-controller="CashHandover" asp-action="Open" class="nav-link
                                 @(ViewData["ActiveMenu"]?.ToString() == "Handover" ? "active" : "")">
                                 <i class="nav-icon fas fa-hand-holding-usd"></i>
                                 <p>@(isArabic ? "تسليم الخزينة" : "Cash Handover")</p>
@@ -366,7 +381,7 @@
                     <div class="col-sm-6">
                         <ol class="breadcrumb float-sm-end">
                             <li class="breadcrumb-item">
-                                <a asp-controller="Home" asp-action="Index">
+                                <a asp-controller="Dashboard" asp-action="Index">
                                     <i class="fas fa-home"></i>
                                 </a>
                             </li>

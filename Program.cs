@@ -193,6 +193,7 @@ static async Task SeedRolesAndAdminAsync(
 {
     var roleManager = services.GetRequiredService<RoleManager<IdentityRole<int>>>();
     var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+    var db          = services.GetRequiredService<RestaurantDbContext>();
 
     // ── Ensure roles exist ────────────────────────────────────────────────────
     string[] roles = ["SuperAdmin", "Manager", "Cashier", "Waiter", "KitchenStaff", "Accountant"];
@@ -236,4 +237,65 @@ static async Task SeedRolesAndAdminAsync(
             logger.LogWarning("Failed to seed admin user: {Errors}", errors);
         }
     }
+
+    // ── Seed sample categories & menu items ───────────────────────────────────
+    await SeedMenuAsync(db, logger);
+}
+
+static async Task SeedMenuAsync(RestaurantDbContext db, ILogger<Program> logger)
+{
+    if (db.Categories.Any()) return; // already seeded
+
+    logger.LogInformation("Seeding sample categories and menu items…");
+
+    var cats = new[]
+    {
+        new Category { NameAr = "المشروبات",   NameEn = "Beverages",   IconClass = "fas fa-coffee",      DisplayOrder = 1 },
+        new Category { NameAr = "المقبلات",    NameEn = "Starters",    IconClass = "fas fa-leaf",         DisplayOrder = 2 },
+        new Category { NameAr = "الأطباق الرئيسية", NameEn = "Main Course", IconClass = "fas fa-drumstick-bite", DisplayOrder = 3 },
+        new Category { NameAr = "البيتزا",     NameEn = "Pizza",       IconClass = "fas fa-pizza-slice",  DisplayOrder = 4 },
+        new Category { NameAr = "الحلويات",    NameEn = "Desserts",    IconClass = "fas fa-ice-cream",    DisplayOrder = 5 },
+    };
+    db.Categories.AddRange(cats);
+    await db.SaveChangesAsync();
+
+    var bev  = cats[0]; var sta = cats[1];
+    var main = cats[2]; var piz = cats[3]; var des = cats[4];
+
+    var items = new[]
+    {
+        // Beverages
+        new MenuItem { NameAr="قهوة عربية",     NameEn="Arabic Coffee",    Price=5.000m,  CategoryId=bev.Id,  DisplayOrder=1, IsAvailable=true },
+        new MenuItem { NameAr="عصير برتقال",    NameEn="Orange Juice",     Price=8.000m,  CategoryId=bev.Id,  DisplayOrder=2, IsAvailable=true },
+        new MenuItem { NameAr="شاي بالنعناع",   NameEn="Mint Tea",         Price=4.500m,  CategoryId=bev.Id,  DisplayOrder=3, IsAvailable=true },
+        new MenuItem { NameAr="ماء معدني",      NameEn="Mineral Water",    Price=2.000m,  CategoryId=bev.Id,  DisplayOrder=4, IsAvailable=true },
+        new MenuItem { NameAr="كابتشينو",       NameEn="Cappuccino",       Price=10.000m, CategoryId=bev.Id,  DisplayOrder=5, IsAvailable=true },
+
+        // Starters
+        new MenuItem { NameAr="حمص",            NameEn="Hummus",           Price=12.000m, CategoryId=sta.Id,  DisplayOrder=1, IsAvailable=true },
+        new MenuItem { NameAr="فتوش",           NameEn="Fattoush Salad",   Price=14.000m, CategoryId=sta.Id,  DisplayOrder=2, IsAvailable=true },
+        new MenuItem { NameAr="سلطة خضراء",    NameEn="Green Salad",      Price=11.000m, CategoryId=sta.Id,  DisplayOrder=3, IsAvailable=true },
+        new MenuItem { NameAr="متبل",           NameEn="Mutabbal",         Price=12.000m, CategoryId=sta.Id,  DisplayOrder=4, IsAvailable=true },
+
+        // Main Course
+        new MenuItem { NameAr="دجاج مشوي",     NameEn="Grilled Chicken",  Price=35.000m, CategoryId=main.Id, DisplayOrder=1, IsAvailable=true },
+        new MenuItem { NameAr="لحم مشوي",      NameEn="Grilled Lamb",     Price=55.000m, CategoryId=main.Id, DisplayOrder=2, IsAvailable=true },
+        new MenuItem { NameAr="سمك مشوي",      NameEn="Grilled Fish",     Price=45.000m, CategoryId=main.Id, DisplayOrder=3, IsAvailable=true },
+        new MenuItem { NameAr="برغر لحم",      NameEn="Beef Burger",      Price=28.000m, CategoryId=main.Id, DisplayOrder=4, IsAvailable=true },
+        new MenuItem { NameAr="شاورما دجاج",   NameEn="Chicken Shawarma", Price=22.000m, CategoryId=main.Id, DisplayOrder=5, IsAvailable=true },
+
+        // Pizza
+        new MenuItem { NameAr="بيتزا مرغريتا", NameEn="Margherita Pizza", Price=30.000m, CategoryId=piz.Id,  DisplayOrder=1, IsAvailable=true },
+        new MenuItem { NameAr="بيتزا دجاج",    NameEn="Chicken Pizza",    Price=35.000m, CategoryId=piz.Id,  DisplayOrder=2, IsAvailable=true },
+        new MenuItem { NameAr="بيتزا خضار",    NameEn="Veggie Pizza",     Price=28.000m, CategoryId=piz.Id,  DisplayOrder=3, IsAvailable=true },
+
+        // Desserts
+        new MenuItem { NameAr="أم علي",        NameEn="Om Ali",           Price=18.000m, CategoryId=des.Id,  DisplayOrder=1, IsAvailable=true },
+        new MenuItem { NameAr="كنافة",         NameEn="Kunafa",           Price=20.000m, CategoryId=des.Id,  DisplayOrder=2, IsAvailable=true },
+        new MenuItem { NameAr="آيس كريم",      NameEn="Ice Cream",        Price=12.000m, CategoryId=des.Id,  DisplayOrder=3, IsAvailable=true },
+    };
+    db.MenuItems.AddRange(items);
+    await db.SaveChangesAsync();
+
+    logger.LogInformation("Seeded {CatCount} categories and {ItemCount} menu items.", cats.Length, items.Length);
 }

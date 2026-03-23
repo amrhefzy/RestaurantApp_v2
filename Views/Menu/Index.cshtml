@@ -1,0 +1,51 @@
+@using Microsoft.AspNetCore.Localization
+@model IEnumerable<RestaurantMS.Models.Domain.MenuItem>
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Menu Management";
+    var culture = Context.Features.Get<IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "ar";
+    var isAr = culture.StartsWith("ar");
+}
+<div class="card shadow-sm">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-utensils me-2"></i>@(isAr ? "إدارة القائمة" : "Menu Management")</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover" id="menu-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>@(isAr ? "الاسم بالعربية" : "Arabic Name")</th>
+                        <th>@(isAr ? "الاسم بالإنجليزية" : "English Name")</th>
+                        <th>@(isAr ? "الفئة" : "Category")</th>
+                        <th>@(isAr ? "السعر" : "Price")</th>
+                        <th>@(isAr ? "متاح" : "Available")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@item.Id</td>
+                            <td>@item.NameAr</td>
+                            <td>@item.NameEn</td>
+                            <td>@item.Category?.NameEn</td>
+                            <td>@item.Price.ToString("N3")</td>
+                            <td>
+                                @if (item.IsAvailable)
+                                {
+                                    <span class="badge bg-success">@(isAr ? "متاح" : "Yes")</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">@(isAr ? "غير متاح" : "No")</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

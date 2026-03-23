@@ -17,4 +17,11 @@ public interface IPosService
     Task<ApiResponse<PosOrderDto>>      GetOrderDetailsAsync(int orderId);
     Task<ApiResponse<List<MenuItemDto>>> GetMenuAsync(int? categoryId = null, string? search = null);
     Task<ApiResponse<MenuItemDto?>>     GetMenuItemByBarcodeAsync(string barcode);
+
+    // ── State-machine transitions ──────────────────────────────────────────
+    Task<ApiResponse<bool>> SendToKitchenAsync(int orderId);
+    Task<ApiResponse<bool>> MarkPreparingAsync(int orderId);
+    Task<ApiResponse<bool>> MarkReadyAsync(int orderId);
+    Task<ApiResponse<bool>> MarkServedAsync(int orderId);
+    Task<ApiResponse<List<PosOrderDto>>> GetKitchenOrdersAsync();
 }

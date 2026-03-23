@@ -1,0 +1,20 @@
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Access Denied";
+    var isAr = ViewContext.HttpContext.Request.Cookies[".AspNetCore.Culture"]?.Contains("ar") ?? true;
+}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6 text-center">
+        <div class="display-1 text-danger mb-3"><i class="fas fa-ban"></i></div>
+        <h2 class="fw-bold">@(isAr ? "غير مصرح لك" : "Access Denied")</h2>
+        <p class="text-muted">
+            @(isAr
+                ? "ليس لديك صلاحية للوصول إلى هذه الصفحة."
+                : "You do not have permission to access this page.")
+        </p>
+        <a href="/" class="btn btn-primary mt-3">
+            <i class="fas fa-home me-2"></i>
+            @(isAr ? "العودة للرئيسية" : "Back to Home")
+        </a>
+    </div>
+</div>

@@ -1,218 +1,645 @@
 @using Microsoft.AspNetCore.Localization
+@using Microsoft.AspNetCore.Antiforgery
+@inject IAntiforgery Antiforgery
 @{
-    var culture = Context.Features.Get<IRequestCultureFeature>()
-                      ?.RequestCulture.Culture.Name ?? "ar";
-    var isAr    = culture.StartsWith("ar");
-
-    Layout            = "~/Views/Shared/_LayoutTouch.cshtml";
-    ViewData["Title"] = isAr ? "POS لمس" : "POS Touch";
+    Layout = null;
+    var culture = Context.Features.Get<IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "ar";
+    var isAr = culture.StartsWith("ar");
+    var dir  = isAr ? "rtl" : "ltr";
+    var csrf = Antiforgery.GetAndStoreTokens(Context).RequestToken;
 }
-
-@section Styles {
+<!DOCTYPE html>
+<html lang="@(isAr ? "ar" : "en")" dir="@dir">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <meta name="csrf-token" content="@csrf" />
+    <title>POS Touch — RestaurantMS</title>
+    @if (isAr)
+    {
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.rtl.min.css" />
+        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    }
+    else
+    {
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    }
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <link rel="stylesheet" href="~/css/pos-touch.css" asp-append-version="true" />
-}
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body { font-family: @(isAr ? "'Cairo'" : "'Inter'"), sans-serif; }
 
-<div class="pos-touch-body" id="touchApp">
+        .status-pill {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 4px 12px; border-radius: 20px; font-size: .78rem; font-weight: 700;
+        }
+        .sp-open     { background: rgba(34,197,94,.15);  color: #4ade80; }
+        .sp-held     { background: rgba(245,158,11,.15); color: #fbbf24; }
+        .sp-kitchen  { background: rgba(59,130,246,.15); color: #60a5fa; }
+        .sp-preparing{ background: rgba(168,85,247,.15); color: #c084fc; }
+        .sp-ready    { background: rgba(16,185,129,.15); color: #34d399; }
 
-    @* ── Top Bar ─────────────────────────────────────────────────────── *@
-    <div class="touch-topbar">
-        <h1><i class="fas fa-cash-register me-2"></i>@(isAr ? "نقطة البيع" : "POS")</h1>
-        <span id="touch-order-num" class="badge bg-secondary fs-6">
-            @(isAr ? "طلب جديد" : "New Order")
+        /* ── Category sidebar (vertical left/right) ──────────────── */
+        .cat-sidebar {
+            width: 88px; flex-shrink: 0;
+            background: rgba(0,0,0,.3);
+            border-right: 1px solid rgba(255,255,255,.06);
+            overflow-y: auto; scrollbar-width: none;
+            display: flex; flex-direction: column;
+            padding: 8px 6px; gap: 6px;
+        }
+        [dir=rtl] .cat-sidebar { border-right: none; border-left: 1px solid rgba(255,255,255,.06); }
+        .cat-sidebar::-webkit-scrollbar { display: none; }
+        .cat-btn {
+            min-height: 68px; border-radius: 12px;
+            background: rgba(255,255,255,.06); border: 1.5px solid transparent;
+            color: rgba(255,255,255,.6); font-size: .71rem; font-weight: 700;
+            cursor: pointer; text-align: center; padding: 8px 4px; line-height: 1.3;
+            touch-action: manipulation; transition: all .15s;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 4px; user-select: none;
+        }
+        .cat-btn i { font-size: 1.2rem; }
+        .cat-btn:active { transform: scale(.93); }
+        .cat-btn.active { background: rgba(99,102,241,.25); border-color: #6366f1; color: #a5b4fc; }
+
+        /* ── Product area ─────────────────────────────────────── */
+        .prod-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .prod-search-bar {
+            padding: 8px 10px; flex-shrink: 0;
+            background: rgba(0,0,0,.2); border-bottom: 1px solid rgba(255,255,255,.06);
+        }
+        .prod-search-bar input {
+            width: 100%; height: 40px; background: rgba(255,255,255,.1);
+            border: 1px solid rgba(255,255,255,.15); border-radius: 10px; color: #fff;
+            font-size: 15px; padding: 0 14px; outline: none;
+        }
+        .prod-search-bar input::placeholder { color: rgba(255,255,255,.35); }
+        .prod-search-bar input:focus { border-color: #6366f1; }
+        .prod-grid-scroll {
+            flex: 1; overflow-y: auto; padding: 10px;
+            scrollbar-width: none; -webkit-overflow-scrolling: touch;
+        }
+        .prod-grid-scroll::-webkit-scrollbar { display: none; }
+        .prod-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+        }
+        @@media (min-width: 600px) { .prod-grid { grid-template-columns: repeat(3, 1fr); } }
+        @@media (min-width: 900px) { .prod-grid { grid-template-columns: repeat(4, 1fr); } }
+
+        .prod-card {
+            min-height: 108px; border-radius: 12px;
+            background: rgba(255,255,255,.07); border: 1.5px solid rgba(255,255,255,.09);
+            padding: 10px 8px 8px;
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
+            cursor: pointer; touch-action: manipulation;
+            transition: all .15s; user-select: none; position: relative;
+        }
+        .prod-card:active { transform: scale(.93); background: rgba(99,102,241,.2); border-color: #6366f1; }
+        .prod-card .picon { font-size: 1.7rem; line-height: 1; }
+        .prod-card .pname {
+            font-size: .77rem; font-weight: 700; text-align: center; color: rgba(255,255,255,.9);
+            line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .prod-card .pprice { font-size: .88rem; font-weight: 800; color: #34d399; margin-top: auto; }
+        .prod-card.unavail { opacity: .3; pointer-events: none; }
+        .in-cart-dot {
+            position: absolute; top: 5px; right: 5px;
+            width: 20px; height: 20px; border-radius: 50%;
+            background: #6366f1; color: #fff;
+            font-size: .62rem; font-weight: 800;
+            display: flex; align-items: center; justify-content: center;
+        }
+        [dir=rtl] .in-cart-dot { right: auto; left: 5px; }
+
+        /* ── Cart panel ────────────────────────────────────────── */
+        .cart-panel {
+            width: 296px; flex-shrink: 0; background: #0f1929;
+            border-left: 1px solid rgba(255,255,255,.08);
+            display: flex; flex-direction: column;
+        }
+        [dir=rtl] .cart-panel { border-left: none; border-right: 1px solid rgba(255,255,255,.08); }
+        @@media (max-width:700px) { .cart-panel { width: 250px; } }
+
+        .cart-hdr {
+            padding: 10px 12px; background: rgba(0,0,0,.25);
+            border-bottom: 1px solid rgba(255,255,255,.07);
+            display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+        }
+        .cart-hdr h5 { font-size: .9rem; font-weight: 800; margin: 0; }
+        .cart-meta { display: flex; gap: 6px; padding: 8px 10px; background: rgba(0,0,0,.15); flex-shrink: 0; }
+        .cart-meta select, .cart-meta input {
+            flex: 1; height: 36px; font-size: 13px;
+            background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.15);
+            color: #fff; border-radius: 8px; padding: 0 8px;
+        }
+        .cart-meta select option { background: #0f1929; }
+        .cart-list { flex: 1; overflow-y: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+        .cart-list::-webkit-scrollbar { display: none; }
+        .citem {
+            min-height: 54px; display: flex; align-items: center;
+            gap: 8px; padding: 6px 10px;
+            border-bottom: 1px solid rgba(255,255,255,.05);
+        }
+        .citem-name {
+            flex: 1; font-size: .79rem; font-weight: 600; color: rgba(255,255,255,.87);
+            overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+        }
+        .stepper { display: flex; align-items: center; gap: 4px; }
+        .sbtn {
+            width: 28px; height: 28px; border-radius: 50%;
+            background: rgba(255,255,255,.1); border: none; color: #fff;
+            font-size: .95rem; cursor: pointer; touch-action: manipulation;
+            display: flex; align-items: center; justify-content: center;
+            transition: all .1s; user-select: none;
+        }
+        .sbtn:active { transform: scale(.86); background: rgba(255,255,255,.2); }
+        .sbtn.del { background: rgba(239,68,68,.2); color: #f87171; }
+        .citem-price { font-size: .84rem; font-weight: 800; color: #34d399; min-width: 46px; text-align: end; }
+        .cart-totals {
+            padding: 8px 12px; background: rgba(0,0,0,.2);
+            border-top: 1px solid rgba(255,255,255,.08); flex-shrink: 0; font-size: .82rem;
+        }
+        .tr { display: flex; justify-content: space-between; padding: 2px 0; color: rgba(255,255,255,.6); }
+        .tr.grand { font-size: 1.1rem; font-weight: 800; color: #fff; padding-top: 6px; margin-top: 4px; border-top: 1px solid rgba(255,255,255,.12); }
+        .act-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; padding: 8px 10px; flex-shrink: 0; }
+        .abtn {
+            height: 46px; border-radius: 10px; border: none;
+            font-size: .84rem; font-weight: 700; cursor: pointer;
+            touch-action: manipulation; transition: transform .1s, opacity .1s;
+            display: flex; align-items: center; justify-content: center; gap: 5px; user-select: none;
+        }
+        .abtn:active { transform: scale(.93); opacity: .85; }
+        .a-pay   { background: #22c55e; color: #fff; grid-column: 1 / -1; height: 54px; font-size: .95rem; }
+        .a-kitchen { background: #3b82f6; color: #fff; }
+        .a-hold  { background: #f59e0b; color: #1f2937; }
+        .a-void  { background: rgba(239,68,68,.2); color: #f87171; }
+        .a-held  { background: rgba(99,102,241,.2); color: #a5b4fc; }
+        .a-new   { background: #6366f1; color: #fff; }
+
+        /* ── Modals ─────────────────────────────────────────────── */
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 1000; display: flex; align-items: flex-end; justify-content: center; }
+        .sheet {
+            background: #1e2a3a; border-radius: 20px 20px 0 0;
+            width: 100%; max-width: 440px; padding: 20px 16px 32px;
+            box-shadow: 0 -8px 40px rgba(0,0,0,.5);
+        }
+        .stitle { font-size: 1.05rem; font-weight: 800; text-align: center; margin-bottom: 16px; }
+        .s-close { float: right; background: none; border: none; color: rgba(255,255,255,.35); font-size: 1.3rem; cursor: pointer; }
+        [dir=rtl] .s-close { float: left; }
+        .pay-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+        .ptab {
+            flex: 1; height: 44px; border-radius: 10px;
+            border: 1.5px solid rgba(255,255,255,.15);
+            background: rgba(255,255,255,.06); color: rgba(255,255,255,.65);
+            font-weight: 700; font-size: .88rem; cursor: pointer; transition: all .15s;
+        }
+        .ptab.on { background: #6366f1; border-color: #6366f1; color: #fff; }
+        .pay-ttl {
+            text-align: center; font-size: 2rem; font-weight: 800;
+            padding: 14px; background: rgba(255,255,255,.06); border-radius: 12px;
+            margin-bottom: 14px; color: #fff;
+        }
+        .field-wrap { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+        .field-wrap label { font-size: .84rem; color: rgba(255,255,255,.55); font-weight: 600; }
+        .field-wrap input {
+            height: 48px; background: rgba(255,255,255,.1); border: 1.5px solid rgba(255,255,255,.2);
+            border-radius: 12px; color: #fff; font-size: 1.1rem; font-weight: 700;
+            padding: 0 14px; outline: none; text-align: center;
+        }
+        .field-wrap input:focus { border-color: #6366f1; }
+        .change-box {
+            text-align: center; padding: 10px;
+            background: rgba(34,197,94,.1); border-radius: 12px;
+            color: #4ade80; font-size: 1.1rem; font-weight: 800; margin-bottom: 14px;
+        }
+        .big-btn {
+            width: 100%; height: 56px; border: none; border-radius: 12px;
+            color: #fff; font-size: 1rem; font-weight: 800; cursor: pointer; transition: transform .1s;
+        }
+        .big-btn:active { transform: scale(.97); }
+        .big-btn:disabled { background: #374151 !important; color: #6b7280; }
+        .big-btn.green { background: #22c55e; }
+        .big-btn.red   { background: #ef4444; }
+        .held-list { max-height: 280px; overflow-y: auto; scrollbar-width: none; }
+        .held-row {
+            padding: 10px 12px; border-radius: 10px;
+            background: rgba(255,255,255,.06); margin-bottom: 8px;
+            display: flex; align-items: center; justify-content: space-between;
+            cursor: pointer; transition: all .15s;
+        }
+        .held-row:hover { background: rgba(99,102,241,.2); }
+
+        /* topbar */
+        .pos-topbar {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 12px; background: rgba(0,0,0,.3);
+            border-bottom: 1px solid rgba(255,255,255,.07);
+            flex-shrink: 0; min-height: 52px;
+        }
+        .pos-topbar .brand { font-size: .92rem; font-weight: 800; flex: 1; }
+        .tbtn {
+            height: 34px; padding: 0 11px; border-radius: 8px; border: none;
+            background: rgba(255,255,255,.1); color: rgba(255,255,255,.7);
+            font-size: .8rem; font-weight: 700; cursor: pointer;
+            touch-action: manipulation; transition: all .15s;
+        }
+        .tbtn:hover { background: rgba(255,255,255,.18); }
+
+        /* toast */
+        #pt { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+              z-index: 9999; background: #1f2937; color: #fff; padding: 11px 22px;
+              border-radius: 12px; font-weight: 700; font-size: .88rem; display: none;
+              min-width: 180px; text-align: center; box-shadow: 0 8px 28px rgba(0,0,0,.4); }
+
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+
+<body class="pos-touch-body" x-data="pos()" x-init="init()" x-cloak>
+
+@* Top Bar *@
+<div class="pos-topbar">
+    <span class="brand"><i class="fas fa-utensils me-2 text-warning"></i>POS Touch</span>
+    <template x-if="order">
+        <span class="status-pill" :class="spCls">
+            <i class="fas fa-circle fa-xs"></i><span x-text="spLbl"></span>
         </span>
-        <button class="touch-btn btn btn-outline-light btn-sm" id="touch-held-btn"
-                style="min-height:44px;min-width:44px" title="@(isAr ? "معلق" : "Held")">
-            <i class="fas fa-pause-circle"></i>
-            <span class="badge bg-danger ms-1" id="touch-held-count" style="display:none">0</span>
-        </button>
-        <button class="touch-btn btn btn-outline-danger btn-sm"
-                style="min-height:44px;min-width:44px"
-                onclick="document.exitFullscreen && document.exitFullscreen()"
-                title="@(isAr ? "الخروج من ملء الشاشة" : "Exit Fullscreen")">
-            <i class="fas fa-compress"></i>
-        </button>
-    </div>
-
-    @* ── Main area ────────────────────────────────────────────────────── *@
-    <div class="touch-wrapper">
-
-        @* LEFT — Menu ─────────────────────────────────────────────────── *@
-        <div class="touch-menu-side">
-
-            @* Search *@
-            <div class="touch-search">
-                <input type="text" id="touch-search" autocomplete="off"
-                       placeholder="@(isAr ? "ابحث..." : "Search...")" />
-            </div>
-
-            @* Category tabs *@
-            <div class="touch-category-bar" id="touch-cat-bar">
-                <button class="touch-cat-tab active" data-id="">
-                    <i class="fas fa-border-all"></i>
-                    @(isAr ? "الكل" : "All")
-                </button>
-            </div>
-
-            @* Menu grid *@
-            <div class="touch-menu-scroll">
-                <div class="touch-menu-grid" id="touch-menu-grid">
-                    @for (int i = 0; i < 6; i++)
-                    {
-                        <div class="touch-item-card" style="background:rgba(255,255,255,0.04)"></div>
-                    }
-                </div>
-            </div>
-        </div>
-
-        @* RIGHT — Cart ─────────────────────────────────────────────────── *@
-        <div class="touch-cart-side">
-
-            @* Cart header *@
-            <div class="touch-cart-header">
-                <span><i class="fas fa-receipt me-2"></i>@(isAr ? "الطلب" : "Order")</span>
-                <span id="touch-item-count" class="badge bg-primary">0</span>
-            </div>
-
-            @* Order meta *@
-            <div class="touch-order-meta">
-                <select id="touch-order-type">
-                    <option value="1">@(isAr ? "داخل" : "Dine In")</option>
-                    <option value="2">@(isAr ? "تيك أواي" : "Takeaway")</option>
-                    <option value="3">@(isAr ? "توصيل" : "Delivery")</option>
-                </select>
-                <input type="text" id="touch-table-num"
-                       placeholder="@(isAr ? "طاولة" : "Table")" maxlength="10" />
-            </div>
-
-            @* Cart items *@
-            <div class="touch-cart-items" id="touch-cart-items">
-                <div class="text-center py-5 text-white-50" id="touch-cart-empty">
-                    <i class="fas fa-shopping-cart fa-2x mb-2 d-block"></i>
-                    @(isAr ? "السلة فارغة" : "Cart is empty")
-                </div>
-            </div>
-
-            @* Totals *@
-            <div class="touch-totals">
-                <div class="touch-totals-row">
-                    <span>@(isAr ? "مجموع" : "Subtotal")</span>
-                    <span id="touch-subtotal">0.000</span>
-                </div>
-                <div class="touch-totals-row">
-                    <span>@(isAr ? "ضريبة 14%" : "Tax 14%")</span>
-                    <span id="touch-tax">0.000</span>
-                </div>
-                <div class="touch-totals-row">
-                    <span>@(isAr ? "خصم" : "Discount")</span>
-                    <span id="touch-discount">0.000</span>
-                </div>
-                <div class="touch-totals-row grand">
-                    <span>@(isAr ? "الإجمالي" : "Total")</span>
-                    <span id="touch-total">0.000</span>
-                </div>
-            </div>
-
-            @* Payment buttons *@
-            <div class="touch-payment-btns">
-                <button class="touch-pay-btn" id="touch-cash-btn"
-                        style="background:var(--success-color);color:#fff;">
-                    <i class="fas fa-money-bill-wave fa-lg"></i>
-                    @(isAr ? "نقداً" : "CASH")
-                </button>
-                <button class="touch-pay-btn" id="touch-card-btn"
-                        style="background:var(--secondary-color);color:#fff;">
-                    <i class="fas fa-credit-card fa-lg"></i>
-                    @(isAr ? "بطاقة" : "CARD")
-                </button>
-                <button class="touch-pay-btn" id="touch-split-btn"
-                        style="background:var(--warning-color);color:#fff;">
-                    <i class="fas fa-code-branch fa-lg"></i>
-                    @(isAr ? "تقسيم" : "SPLIT")
-                </button>
-            </div>
-
-            @* Action buttons row *@
-            <div style="display:flex;gap:8px;padding:0 12px 12px">
-                <button class="touch-btn btn btn-outline-danger flex-fill" id="touch-clear-btn"
-                        style="min-height:48px">
-                    <i class="fas fa-trash-alt"></i>
-                </button>
-                <button class="touch-btn btn btn-outline-warning flex-fill" id="touch-hold-btn"
-                        style="min-height:48px">
-                    <i class="fas fa-pause"></i>
-                </button>
-                <button class="touch-btn btn btn-outline-secondary flex-fill" id="touch-void-btn"
-                        style="min-height:48px">
-                    <i class="fas fa-ban"></i>
-                </button>
-            </div>
-
-        </div>
-    </div>
+    </template>
+    <button class="tbtn" x-show="held.length" @@click="showH=true">
+        <i class="fas fa-layer-group me-1"></i><span x-text="held.length"></span>
+    </button>
+    <a href="/Dashboard" class="tbtn"><i class="fas fa-home"></i></a>
 </div>
 
-@* Numpad overlay (shared between qty and cash) *@
-<div class="numpad-overlay" id="numpadOverlay" style="display:none">
-    <div class="numpad-sheet">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0 text-white" id="numpad-title">
-                @(isAr ? "أدخل الكمية" : "Enter Quantity")
+@* Main *@
+<div class="touch-wrapper">
+
+    @* Categories sidebar *@
+    <div class="cat-sidebar">
+        <button class="cat-btn" :class="{active:selCat===null}" @@click="selCat=null;loadProds()">
+            <i class="fas fa-th-large"></i>
+            <span>@(isAr ? "الكل" : "All")</span>
+        </button>
+        <template x-for="c in cats" :key="c.id">
+            <button class="cat-btn" :class="{active:selCat===c.id}" @@click="selCat=c.id;search='';loadProds()">
+                <i :class="c.iconClass||'fas fa-tag'"></i>
+                <span x-text="@(isAr ? "c.nameAr||c.nameEn" : "c.nameEn||c.nameAr")"></span>
+            </button>
+        </template>
+    </div>
+
+    @* Products *@
+    <div class="prod-area">
+        <div class="prod-search-bar">
+            <input x-model.debounce.300ms="search" @@input="loadProds"
+                   placeholder="@(isAr ? "🔍 بحث..." : "🔍 Search...")" />
+        </div>
+        <div class="prod-grid-scroll">
+            <div class="prod-grid">
+                <template x-if="prods.length===0">
+                    <div style="grid-column:1/-1;text-align:center;padding:2rem;color:rgba(255,255,255,.25)">
+                        <i class="fas fa-search fa-2x mb-2"></i>
+                        <p>@(isAr ? "لا توجد منتجات" : "No items found")</p>
+                    </div>
+                </template>
+                <template x-for="p in prods" :key="p.id">
+                    <div class="prod-card" :class="{unavail:!p.isAvailable}" @@click="addItem(p)">
+                        <span class="picon" x-text="catEmoji(p.categoryId)"></span>
+                        <span class="pname" x-text="@(isAr ? "p.nameAr||p.nameEn" : "p.nameEn||p.nameAr")"></span>
+                        <span class="pprice" x-text="p.price.toFixed(2)"></span>
+                        <span class="in-cart-dot" x-show="inCart(p.id)>0" x-text="inCart(p.id)"></span>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    @* Cart *@
+    <div class="cart-panel">
+        <div class="cart-hdr">
+            <h5>
+                <i class="fas fa-receipt @(isAr ? "ms-2" : "me-2") text-warning"></i>
+                <span x-text="order ? order.orderNumber : '@(isAr ? "طلب" : "Order")'"></span>
             </h5>
-            <button class="btn btn-sm btn-outline-light" id="numpad-close">
-                <i class="fas fa-times"></i>
+            <button class="tbtn" @@click="newOrder()"><i class="fas fa-plus"></i></button>
+        </div>
+        <div class="cart-meta">
+            <select x-model="otype">
+                <option value="1">@(isAr ? "داخلي" : "Dine In")</option>
+                <option value="2">@(isAr ? "خارجي" : "Takeaway")</option>
+                <option value="3">@(isAr ? "توصيل" : "Delivery")</option>
+            </select>
+            <input x-model="tnum" placeholder="@(isAr ? "طاولة" : "Table")" />
+        </div>
+        <div class="cart-list">
+            <template x-if="!order || order.items.filter(i=>!i.isDeleted).length===0">
+                <div style="text-align:center;padding:2rem;color:rgba(255,255,255,.2)">
+                    <i class="fas fa-utensils fa-2x mb-2"></i>
+                    <p style="font-size:.82rem">@(isAr ? "اضغط منتجاً للإضافة" : "Tap item to add")</p>
+                </div>
+            </template>
+            <template x-if="order">
+                <template x-for="r in order.items.filter(i=>!i.isDeleted)" :key="r.id">
+                    <div class="citem">
+                        <div class="citem-name" x-text="@(isAr ? "r.menuItemNameAr||r.menuItemNameEn" : "r.menuItemNameEn||r.menuItemNameAr")"></div>
+                        <div class="stepper">
+                            <button class="sbtn del" @@click="rmItem(r.id)"><i class="fas fa-trash-alt fa-xs"></i></button>
+                            <button class="sbtn" @@click="chgQty(r.id, r.quantity-1)">−</button>
+                            <span style="min-width:22px;text-align:center;font-weight:800;font-size:.88rem" x-text="r.quantity"></span>
+                            <button class="sbtn" @@click="chgQty(r.id, r.quantity+1)">+</button>
+                        </div>
+                        <span class="citem-price" x-text="r.totalPrice.toFixed(2)"></span>
+                    </div>
+                </template>
+            </template>
+        </div>
+
+        <div class="cart-totals" x-show="order && order.items.filter(i=>!i.isDeleted).length>0">
+            <div class="tr"><span>@(isAr ? "الإجمالي" : "Subtotal")</span><span x-text="(order?.subTotal??0).toFixed(2)"></span></div>
+            <div class="tr"><span>@(isAr ? "ضريبة 14%" : "Tax 14%")</span><span x-text="(order?.taxAmount??0).toFixed(2)"></span></div>
+            <div class="tr" x-show="(order?.discountAmount??0)>0" style="color:#f87171">
+                <span>@(isAr ? "خصم" : "Discount")</span><span x-text="'−'+(order?.discountAmount??0).toFixed(2)"></span>
+            </div>
+            <div class="tr grand"><span>@(isAr ? "الكلي" : "Total")</span><span x-text="(order?.totalAmount??0).toFixed(2)+' EGP'"></span></div>
+        </div>
+
+        <div class="act-grid" x-show="order">
+            <button class="abtn a-kitchen" x-show="canKitchen" @@click="kitchen()">
+                <i class="fas fa-fire-alt"></i> @(isAr ? "مطبخ" : "Kitchen")
+            </button>
+            <button class="abtn a-hold" @@click="holdOrd()">
+                <i class="fas fa-pause"></i> @(isAr ? "تعليق" : "Hold")
+            </button>
+            <button class="abtn a-void" @@click="showV=true">
+                <i class="fas fa-ban"></i> @(isAr ? "إلغاء" : "Void")
+            </button>
+            <button class="abtn a-held" x-show="held.length" @@click="showH=true">
+                <i class="fas fa-layer-group"></i>(<span x-text="held.length"></span>)
+            </button>
+            <button class="abtn a-pay" @@click="showP=true" :disabled="!canPay">
+                <i class="fas fa-credit-card @(isAr ? "ms-2" : "me-2")"></i>
+                @(isAr ? "الدفع" : "Pay")
+                <template x-if="order"><span x-text="' '+(order.totalAmount??0).toFixed(2)+' EGP'"></span></template>
             </button>
         </div>
-        <div class="numpad-display" id="numpad-display">1</div>
-        <div class="numpad-grid">
-            @foreach (var k in new[] {"7","8","9","4","5","6","1","2","3"})
-            {
-                <button class="numpad-btn" data-k="@k">@k</button>
-            }
-            <button class="numpad-btn clear-btn" data-k="clear">C</button>
-            <button class="numpad-btn" data-k="0">0</button>
-            <button class="numpad-btn" data-k="back"><i class="fas fa-backspace"></i></button>
-        </div>
-        <div class="mt-3 d-flex gap-2">
-            <button class="numpad-btn confirm-btn flex-fill" id="numpad-confirm" style="height:60px">
-                <i class="fas fa-check me-2"></i>@(isAr ? "تأكيد" : "OK")
+        <div x-show="!order" style="padding:.75rem">
+            <button class="abtn a-new" style="width:100%;height:50px" @@click="newOrder()">
+                <i class="fas fa-plus @(isAr ? "ms-2" : "me-2")"></i>@(isAr ? "طلب جديد" : "New Order")
             </button>
-        </div>
-        @* Quick cash shortcuts (shown only in cash mode) *@
-        <div id="cash-quick-btns" class="quick-cash-grid mt-3" style="display:none;
-             display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
-            @foreach (var amt in new[] {"50","100","200","500"})
-            {
-                <button class="numpad-btn" style="height:50px;font-size:15px"
-                        data-quick="@amt">@amt</button>
-            }
         </div>
     </div>
 </div>
 
-@* Modifier popup *@
-<div class="modifier-popup" id="modifierPopup" style="display:none">
-    <div class="modifier-sheet">
-        <h5 id="modifier-title">Options</h5>
-        <div class="mb-3">
-            <label class="form-label text-white-50 small">
-                @(isAr ? "ملاحظات" : "Notes")
-            </label>
-            <textarea id="modifier-notes" rows="3"
-                      placeholder="@(isAr ? "أي طلبات خاصة؟" : "Special requests?")"></textarea>
+@* ── Payment Modal ─────────────────────────────────────────────────────── *@
+<div class="overlay" x-show="showP" @@click.self="showP=false">
+    <div class="sheet">
+        <button class="s-close" @@click="showP=false">×</button>
+        <div class="stitle"><i class="fas fa-credit-card @(isAr ? "ms-2" : "me-2") text-success"></i>@(isAr ? "إتمام الدفع" : "Complete Payment")</div>
+        <div class="pay-tabs">
+            <button class="ptab" :class="{on:pm==='Cash'}" @@click="pm='Cash';ci=''">
+                <i class="fas fa-money-bill-wave @(isAr ? "ms-1" : "me-1")"></i>@(isAr ? "نقدي" : "Cash")
+            </button>
+            <button class="ptab" :class="{on:pm==='Card'}" @@click="pm='Card'">
+                <i class="fas fa-credit-card @(isAr ? "ms-1" : "me-1")"></i>@(isAr ? "بطاقة" : "Card")
+            </button>
+            <button class="ptab" :class="{on:pm==='Split'}" @@click="pm='Split'">
+                <i class="fas fa-divide @(isAr ? "ms-1" : "me-1")"></i>@(isAr ? "مختلط" : "Split")
+            </button>
         </div>
-        <div class="d-flex gap-2">
-            <button class="touch-btn btn btn-secondary flex-fill" id="modifier-cancel"
-                    style="min-height:50px">
-                @(isAr ? "إلغاء" : "Cancel")
-            </button>
-            <button class="touch-btn btn btn-success flex-fill" id="modifier-confirm"
-                    style="min-height:50px">
-                @(isAr ? "إضافة" : "Add to Cart")
-            </button>
+        <div class="pay-ttl">
+            <span x-text="(order?.totalAmount??0).toFixed(2)"></span>
+            <small style="font-size:.5em;opacity:.5"> EGP</small>
+        </div>
+        <template x-if="pm==='Cash'">
+            <div>
+                <div class="field-wrap">
+                    <label>@(isAr ? "المبلغ المستلم" : "Cash Received (EGP)")</label>
+                    <input type="number" x-model="ci" step="0.01" min="0" placeholder="0.00" />
+                </div>
+                <div class="change-box" x-show="parseFloat(ci||(0))>=(order?.totalAmount??0)">
+                    <i class="fas fa-coins me-1"></i>@(isAr ? "الباقي:" : "Change:") <span x-text="chg.toFixed(2)"></span> EGP
+                </div>
+            </div>
+        </template>
+        <div x-show="dv">
+            <div class="field-wrap">
+                <label>@(isAr ? "الخصم (EGP)" : "Discount (EGP)")</label>
+                <input type="number" x-model="di" step="0.01" min="0" placeholder="0.00" />
+            </div>
+        </div>
+        <button style="background:none;border:none;color:rgba(255,255,255,.35);font-size:.8rem;margin-bottom:12px;cursor:pointer" @@click="dv=!dv">
+            <i class="fas fa-tag me-1"></i>@(isAr ? "إضافة خصم" : "Add discount")
+        </button>
+        <button class="big-btn green" @@click="pay()"
+                :disabled="pm==='Cash' && parseFloat(ci||0)<(order?.totalAmount??0)">
+            <i class="fas fa-check-circle @(isAr ? "ms-2" : "me-2")"></i>@(isAr ? "تأكيد الدفع" : "Confirm Payment")
+        </button>
+    </div>
+</div>
+
+@* ── Void Modal ────────────────────────────────────────────────────────── *@
+<div class="overlay" x-show="showV" @@click.self="showV=false">
+    <div class="sheet">
+        <button class="s-close" @@click="showV=false">×</button>
+        <div class="stitle text-danger"><i class="fas fa-ban me-2"></i>@(isAr ? "إلغاء الطلب" : "Void Order")</div>
+        <div class="field-wrap">
+            <label>@(isAr ? "PIN المدير" : "Manager PIN")</label>
+            <input type="password" x-model="vp" maxlength="8" inputmode="numeric"
+                   placeholder="••••" style="letter-spacing:6px" />
+        </div>
+        <div class="field-wrap">
+            <label>@(isAr ? "السبب" : "Reason")</label>
+            <input type="text" x-model="vr" placeholder="@(isAr ? "سبب الإلغاء" : "Reason...")" />
+        </div>
+        <button class="big-btn red" @@click="voidOrd()">
+            <i class="fas fa-trash @(isAr ? "ms-2" : "me-2")"></i>@(isAr ? "تأكيد الإلغاء" : "Confirm Void")
+        </button>
+    </div>
+</div>
+
+@* ── Held Orders ───────────────────────────────────────────────────────── *@
+<div class="overlay" x-show="showH" @@click.self="showH=false">
+    <div class="sheet">
+        <button class="s-close" @@click="showH=false">×</button>
+        <div class="stitle"><i class="fas fa-layer-group me-2 text-warning"></i>@(isAr ? "الطلبات المعلقة" : "Held Orders")</div>
+        <div class="held-list">
+            <template x-if="held.length===0">
+                <p style="text-align:center;color:rgba(255,255,255,.25);padding:1rem">@(isAr ? "لا يوجد" : "None")</p>
+            </template>
+            <template x-for="h in held" :key="h.id">
+                <div class="held-row" @@click="recall(h.id)">
+                    <div>
+                        <div style="font-weight:700" x-text="h.orderNumber"></div>
+                        <small style="color:rgba(255,255,255,.35)" x-text="h.items.filter(i=>!i.isDeleted).length+' @(isAr ? "عنصر" : "items")'"></small>
+                    </div>
+                    <span style="font-weight:800;color:#34d399" x-text="(h.totalAmount??0).toFixed(2)+' EGP'"></span>
+                </div>
+            </template>
         </div>
     </div>
 </div>
 
-@section Scripts {
-    <script src="~/js/modules/pos-touch.js" asp-append-version="true"></script>
+<div id="pt"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+<script defer src="//unpkg.com/alpinejs@@3.x.x/dist/cdn.min.js"></script>
+<script>
+const CSRF = document.querySelector('meta[name="csrf-token"]').content;
+const AR   = @(isAr.ToString().ToLower());
+
+function pos() {
+    return {
+        cats:[], prods:[], held:[], order:null,
+        selCat:null, search:'', otype:'1', tnum:'',
+
+        showP:false, showV:false, showH:false,
+        pm:'Cash', ci:'', di:'0', dv:false,
+        vp:'', vr:'',
+
+        get chg() { return Math.max(0, parseFloat(this.ci||0) - (this.order?.totalAmount??0)); },
+        get canPay() {
+            const s = this.order?.status;
+            return this.order && this.order.items.filter(i=>!i.isDeleted).length>0
+                && (s===1||s===4||s===7||s===8);
+        },
+        get canKitchen() {
+            return this.order && (this.order.status===1||this.order.status===4)
+                && this.order.items.filter(i=>!i.isDeleted).length>0;
+        },
+        get spCls() {
+            const m={1:'sp-open',4:'sp-held',5:'sp-kitchen',6:'sp-preparing',7:'sp-ready'};
+            return m[this.order?.status]||'sp-open';
+        },
+        get spLbl() {
+            const m={1:AR?'مفتوح':'Open',4:AR?'معلق':'Held',5:AR?'في المطبخ':'Kitchen',6:AR?'تحضير':'Preparing',7:AR?'جاهز':'Ready'};
+            return m[this.order?.status]||'';
+        },
+
+        async init() { await this.loadCats(); await this.loadProds(); await this.loadHeld(); },
+
+        async loadCats() {
+            const r = await this.api('GET','/Pos/GetCategories');
+            if(r.success && r.data){
+                // Deduplicate categories from menu items
+                const seen = new Set();
+                const cats = [];
+                for(const item of r.data){
+                    const catId = item.categoryId;
+                    if(!seen.has(catId)){
+                        seen.add(catId);
+                        cats.push({ id:catId, nameAr:item.categoryNameAr, nameEn:item.categoryNameEn, iconClass:'fas fa-tag' });
+                    }
+                }
+                this.cats = cats;
+            }
+        },
+
+        async loadProds() {
+            const p = new URLSearchParams();
+            if(this.selCat) p.set('categoryId', this.selCat);
+            if(this.search.trim()) p.set('search', this.search.trim());
+            const r = await this.api('GET','/Pos/GetMenu?'+p);
+            if(r.success) this.prods = r.data??[];
+        },
+
+        inCart(mid) {
+            if(!this.order) return 0;
+            const row = this.order.items.find(i=>i.menuItemId===mid && !i.isDeleted);
+            return row?row.quantity:0;
+        },
+        catEmoji(cid) {
+            const m={1:'🥗',2:'🍽️',3:'☕',4:'🍰',5:'🍔',6:'🍕',7:'🥤',8:'🍟',9:'🧁',10:'🥘'};
+            return m[cid]??'🍴';
+        },
+
+        async newOrder() {
+            const r = await this.api('POST','/Pos/CreateOrder',{orderType:parseInt(this.otype),tableNumber:this.tnum||null});
+            if(r.success){ this.order=r.data; this.toast(AR?'تم إنشاء الطلب':'Order created'); }
+            else this.toast(r.message,'err');
+        },
+
+        async addItem(p) {
+            if(!this.order) await this.newOrder();
+            if(!this.order) return;
+            const r = await this.api('POST','/Pos/AddItem',{orderId:this.order.id,menuItemId:p.id,quantity:1});
+            if(r.success) this.order=r.data;
+            else this.toast(r.message,'err');
+        },
+
+        async rmItem(id) {
+            const r = await this.api('POST','/Pos/RemoveItem',{orderId:this.order.id,itemId:id});
+            if(r.success) await this.refresh();
+        },
+        async chgQty(id,q) {
+            if(q<=0){ await this.rmItem(id); return; }
+            const r = await this.api('POST','/Pos/UpdateQty',{orderId:this.order.id,itemId:id,quantity:q});
+            if(r.success) await this.refresh();
+        },
+        async refresh() {
+            if(!this.order) return;
+            const r = await this.api('GET',`/Pos/GetOrderDetails?orderId=${this.order.id}`);
+            if(r.success) this.order=r.data;
+        },
+
+        async kitchen() {
+            const r = await this.api('POST','/Pos/SendToKitchen',{orderId:this.order.id});
+            if(r.success){ await this.refresh(); this.toast(AR?'أُرسل للمطبخ':'Sent to kitchen'); }
+            else this.toast(r.message,'err');
+        },
+        async holdOrd() {
+            const r = await this.api('POST','/Pos/HoldOrder',{orderId:this.order.id});
+            if(r.success){ this.held.push(this.order); this.order=null; this.toast(AR?'تم التعليق':'On hold'); }
+        },
+        async recall(id) {
+            const r = await this.api('POST','/Pos/RecallOrder',{orderId:id});
+            if(r.success){ this.order=r.data; this.held=this.held.filter(h=>h.id!==id); this.showH=false; }
+        },
+        async loadHeld() {
+            const r = await this.api('GET','/Pos/GetActiveOrders');
+            if(r.success) this.held=(r.data??[]).filter(o=>o.status===4);
+        },
+
+        async voidOrd() {
+            if(!this.vp) return;
+            const r = await this.api('POST','/Pos/VoidOrder',{orderId:this.order.id,reason:this.vr,managerPin:this.vp});
+            if(r.success){ this.order=null; this.showV=false; this.vp=''; this.vr=''; this.toast(AR?'تم الإلغاء':'Voided'); }
+            else this.toast(r.message||'PIN خاطئ','err');
+        },
+
+        async pay() {
+            const body={
+                orderId:this.order.id,
+                paymentMethod:this.pm==='Cash'?1:this.pm==='Card'?2:3,
+                cashReceived:this.pm==='Cash'?parseFloat(this.ci):null,
+                discountAmount:parseFloat(this.di||0),
+                managerPin:null
+            };
+            const r = await this.api('POST','/Pos/ProcessPayment',body);
+            if(r.success){
+                this.showP=false;
+                this.toast(`${AR?'تم الدفع — باقي':'Paid — change:'} ${(r.data.changeGiven??0).toFixed(2)} EGP`,'ok');
+                this.order=null; this.ci=''; this.di='0';
+            } else this.toast(r.message,'err');
+        },
+
+        async api(m,u,b=null){
+            const o={method:m,headers:{'Content-Type':'application/json','X-CSRF-TOKEN':CSRF}};
+            if(b) o.body=JSON.stringify(b);
+            const res=await fetch(u,o);
+            return await res.json();
+        },
+        toast(msg,t='ok'){
+            const el=document.getElementById('pt');
+            el.style.background=t==='err'?'#ef4444':t==='ok'?'#22c55e':'#374151';
+            el.textContent=msg; el.style.display='block';
+            setTimeout(()=>el.style.display='none',2800);
+        }
+    };
 }
+</script>
+</body>
+</html>

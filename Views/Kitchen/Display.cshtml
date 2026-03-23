@@ -1,0 +1,293 @@
+@using Microsoft.AspNetCore.Localization
+@using Microsoft.AspNetCore.Antiforgery
+@inject IAntiforgery Antiforgery
+@{
+    Layout = null;
+    var culture = Context.Features.Get<IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "ar";
+    var isAr = culture.StartsWith("ar");
+    var dir  = isAr ? "rtl" : "ltr";
+    var csrf = Antiforgery.GetAndStoreTokens(Context).RequestToken;
+}
+<!DOCTYPE html>
+<html lang="@(isAr ? "ar" : "en")" dir="@dir">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content="@csrf" />
+    <title>@(isAr ? "شاشة المطبخ" : "Kitchen Display") — RestaurantMS</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap@(isAr ? ".rtl" : "").min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    @if (isAr)
+    {
+        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet" />
+    }
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            font-family: @(isAr ? "'Cairo'" : "'Inter'"), sans-serif;
+            background: #111827; color: #f9fafb;
+            min-height: 100vh; overflow-x: hidden;
+        }
+        .kds-header {
+            background: #1f2937; border-bottom: 2px solid #374151;
+            padding: .75rem 1.5rem;
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; z-index: 100;
+        }
+        .kds-brand { font-size: 1.2rem; font-weight: 800; color: #f59e0b; }
+        .kds-clock { font-size: 1.1rem; font-weight: 700; color: #9ca3af; }
+        .kds-legend { display: flex; gap: 1rem; font-size: .82rem; }
+        .kds-legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+        .orders-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+            padding: 1rem;
+        }
+        .order-ticket {
+            background: #1f2937; border-radius: 16px;
+            border: 2px solid #374151;
+            overflow: hidden;
+            transition: transform .2s, border-color .2s;
+            display: flex; flex-direction: column;
+        }
+        .order-ticket:hover { transform: translateY(-2px); }
+        .order-ticket.status-sent    { border-color: #3b82f6; }
+        .order-ticket.status-prep    { border-color: #f59e0b; }
+        .order-ticket.status-ready   { border-color: #22c55e; }
+
+        .ticket-header {
+            padding: .75rem 1rem;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .ticket-header.status-sent  { background: rgba(59,130,246,.15); }
+        .ticket-header.status-prep  { background: rgba(245,158,11,.15); }
+        .ticket-header.status-ready { background: rgba(34,197,94,.15); }
+
+        .ticket-order-num { font-size: 1.05rem; font-weight: 800; }
+        .ticket-type-badge {
+            font-size: .72rem; font-weight: 700;
+            padding: 2px 8px; border-radius: 8px; text-transform: uppercase;
+        }
+        .ticket-timer { font-size: .8rem; font-weight: 700; padding: 2px 8px; border-radius: 8px; }
+        .timer-ok   { background: #d1fae5; color: #065f46; }
+        .timer-warn { background: #fef3c7; color: #92400e; }
+        .timer-late { background: #fee2e2; color: #991b1b; animation: pulse 1.5s infinite; }
+        @@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+
+        .ticket-status-label {
+            font-size: .78rem; font-weight: 700; letter-spacing: .5px;
+            text-transform: uppercase; padding: .25rem 0;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .ticket-status-label.sent  { color: #60a5fa; }
+        .ticket-status-label.prep  { color: #fbbf24; }
+        .ticket-status-label.ready { color: #4ade80; }
+
+        .ticket-items { padding: .5rem 1rem; flex: 1; }
+        .ticket-item-row {
+            display: flex; align-items: center; gap: .5rem;
+            padding: .35rem 0; border-bottom: 1px solid rgba(255,255,255,.06);
+            font-size: .9rem;
+        }
+        .ticket-item-row:last-child { border-bottom: none; }
+        .item-qty {
+            min-width: 28px; height: 28px; border-radius: 8px;
+            background: rgba(255,255,255,.1); font-weight: 800; font-size: .85rem;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .item-note { font-size: .75rem; color: #9ca3af; font-style: italic; }
+
+        .ticket-table-info {
+            padding: .4rem 1rem; background: rgba(255,255,255,.03);
+            font-size: .8rem; color: #9ca3af;
+            border-top: 1px solid rgba(255,255,255,.06);
+        }
+        .ticket-actions {
+            padding: .75rem 1rem; display: flex; gap: .5rem;
+            border-top: 1px solid rgba(255,255,255,.08);
+        }
+        .kds-btn {
+            flex: 1; height: 44px; border-radius: 10px; border: none;
+            font-size: .9rem; font-weight: 700; cursor: pointer;
+            transition: transform .1s, opacity .1s;
+        }
+        .kds-btn:active { transform: scale(.95); opacity: .85; }
+        .btn-prep  { background: #f59e0b; color: #1f2937; }
+        .btn-ready { background: #22c55e; color: #fff; }
+        .btn-done  { background: #374151; color: #9ca3af; }
+
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center; padding: 4rem 1rem; color: #6b7280;
+        }
+        .kds-count-badge {
+            background: #374151; border-radius: 20px;
+            padding: .25rem .75rem; font-size: .8rem; font-weight: 700;
+        }
+        #refresh-status { font-size: .78rem; color: #6b7280; }
+    </style>
+</head>
+<body>
+
+<div class="kds-header">
+    <div class="d-flex align-items-center gap-3">
+        <span class="kds-brand">
+            <i class="fas fa-fire-alt me-2"></i>
+            @(isAr ? "شاشة المطبخ" : "Kitchen Display")
+        </span>
+        <span class="kds-count-badge">
+            <span id="order-count">0</span> @(isAr ? "طلب" : "orders")
+        </span>
+    </div>
+    <div class="kds-legend d-none d-md-flex">
+        <span><span class="kds-legend-dot" style="background:#3b82f6"></span> @(isAr ? "في الانتظار" : "Waiting")</span>
+        <span><span class="kds-legend-dot" style="background:#f59e0b"></span> @(isAr ? "قيد التحضير" : "Preparing")</span>
+        <span><span class="kds-legend-dot" style="background:#22c55e"></span> @(isAr ? "جاهز" : "Ready")</span>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+        <span id="refresh-status">
+            <i class="fas fa-sync-alt fa-spin me-1"></i>
+            <span id="countdown">10</span>s
+        </span>
+        <span class="kds-clock" id="kds-clock"></span>
+        <a href="/" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-home"></i>
+        </a>
+    </div>
+</div>
+
+<div class="orders-grid" id="orders-grid">
+    <div class="empty-state">
+        <i class="fas fa-check-circle fa-3x mb-3" style="color:#22c55e;opacity:.4"></i>
+        <p class="fs-5 fw-semibold">@(isAr ? "لا توجد طلبات في المطبخ" : "No orders in kitchen")</p>
+        <p>@(isAr ? "ستظهر الطلبات هنا عند إرسالها من POS" : "Orders appear here when sent from POS")</p>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+<script>
+const isAr  = @(isAr.ToString().ToLower());
+const csrf  = document.querySelector('meta[name="csrf-token"]').content;
+
+// ── Clock ─────────────────────────────────────────────────────────────────
+function updateClock() {
+    const now = new Date();
+    document.getElementById('kds-clock').textContent =
+        now.toLocaleTimeString(isAr ? 'ar-SA' : 'en-US', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── Fetch and render orders ────────────────────────────────────────────────
+async function loadOrders() {
+    try {
+        const res  = await fetch('/Kitchen/GetOrders');
+        const data = await res.json();
+        if (!data.success) return;
+        render(data.data ?? []);
+    } catch(e) { console.error('KDS error', e); }
+}
+
+function statusInfo(statusCode) {
+    const map = {
+        5: { cls:'sent',  label: isAr?'في الانتظار':'Waiting',  btnCls:'btn-prep',  btnTxt: isAr?'بدء التحضير':'Start Prep', action:'MarkPreparing' },
+        6: { cls:'prep',  label: isAr?'قيد التحضير':'Preparing', btnCls:'btn-ready', btnTxt: isAr?'جاهز':'Mark Ready',    action:'MarkReady'     },
+        7: { cls:'ready', label: isAr?'جاهز للاستلام':'Ready',  btnCls:'btn-done',  btnTxt: isAr?'تم التقديم':'Served',    action:'MarkServed'    },
+    };
+    return map[statusCode] ?? map[5];
+}
+
+function typeLabel(type) {
+    const map = { DineIn:'Dine In', Takeaway:'Takeaway', Delivery:'Delivery' };
+    return map[type] ?? type;
+}
+
+function render(orders) {
+    document.getElementById('order-count').textContent = orders.length;
+    const grid = document.getElementById('orders-grid');
+    if (orders.length === 0) {
+        grid.innerHTML = `<div class="empty-state">
+            <i class="fas fa-check-circle fa-3x mb-3" style="color:#22c55e;opacity:.4"></i>
+            <p class="fs-5 fw-semibold">${isAr?'لا توجد طلبات في المطبخ':'No orders in kitchen'}</p>
+            <p>${isAr?'ستظهر الطلبات هنا عند إرسالها من POS':'Orders appear here when sent from POS'}</p>
+        </div>`;
+        return;
+    }
+
+    // Sort: Ready last, Waiting first
+    orders.sort((a,b) => a.status - b.status);
+
+    const now = Date.now();
+    grid.innerHTML = orders.map(o => {
+        const si     = statusInfo(o.status);
+        const mins   = Math.floor((now - new Date(o.createdAt).getTime()) / 60000);
+        const timCls = mins < 10 ? 'timer-ok' : mins < 20 ? 'timer-warn' : 'timer-late';
+        const items  = (o.items ?? []).filter(i => !i.isDeleted);
+
+        const itemsHtml = items.map(i => `
+            <div class="ticket-item-row">
+                <span class="item-qty">${i.quantity % 1 === 0 ? i.quantity : i.quantity.toFixed(1)}×</span>
+                <div class="flex-1">
+                    <div>${isAr ? i.menuItemNameAr : i.menuItemNameEn}</div>
+                    ${i.notes ? `<div class="item-note">${i.notes}</div>` : ''}
+                </div>
+            </div>`).join('');
+
+        return `<div class="order-ticket status-${si.cls}" id="ticket-${o.id}">
+            <div class="ticket-header status-${si.cls}">
+                <div>
+                    <div class="ticket-order-num">${o.orderNumber}</div>
+                    <div class="ticket-status-label ${si.cls}">
+                        <i class="fas fa-circle fa-xs"></i> ${si.label}
+                    </div>
+                </div>
+                <div class="d-flex flex-column align-items-end gap-1">
+                    <span class="ticket-type-badge" style="background:rgba(255,255,255,.1)">${typeLabel(o.orderType)}</span>
+                    <span class="ticket-timer ${timCls}">${mins}m</span>
+                </div>
+            </div>
+            <div class="ticket-items">${itemsHtml}</div>
+            ${o.tableNumber ? `<div class="ticket-table-info"><i class="fas fa-table me-1"></i>${isAr?'طاولة':'Table'}: ${o.tableNumber}</div>` : ''}
+            <div class="ticket-actions">
+                ${si.action !== 'MarkServed' ? `
+                <button class="kds-btn ${si.btnCls}" onclick="doAction('${si.action}', ${o.id})">
+                    ${si.btnTxt}
+                </button>` : `
+                <button class="kds-btn btn-done" onclick="doAction('MarkServed', ${o.id})">
+                    <i class="fas fa-check me-1"></i>${si.btnTxt}
+                </button>`}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+async function doAction(action, orderId) {
+    try {
+        const ticket = document.getElementById(`ticket-${orderId}`);
+        if (ticket) { ticket.style.opacity = '.5'; ticket.style.pointerEvents = 'none'; }
+        await fetch(`/Kitchen/${action}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+            body: JSON.stringify({ orderId })
+        });
+        await loadOrders();
+    } catch(e) { console.error(e); await loadOrders(); }
+}
+
+// ── Auto-refresh countdown ─────────────────────────────────────────────────
+let countdown = 10;
+setInterval(() => {
+    countdown--;
+    document.getElementById('countdown').textContent = countdown;
+    if (countdown <= 0) {
+        countdown = 10;
+        loadOrders();
+    }
+}, 1000);
+
+loadOrders();
+</script>
+</body>
+</html>
